@@ -1,12 +1,15 @@
 import { createApp } from './app';
 import type { Config } from './config/types';
 import { CurrencyRepository } from './currencies/repository';
+import { CurrencyService } from './currencies/service';
 import { openDatabase } from './database';
 import { CoinMarketCapClient } from './integrations/coinmarketcap/client';
 import { SyncWorker } from './jobs/sync.worker';
 import { SynchronizationService } from './jobs/synchronization.service';
 import { createLogger } from './logger';
+import { CursorCodec } from './prices/cursor';
 import { PriceRepository } from './prices/repository';
+import { PriceService } from './prices/service';
 import { SettingsRepository } from './settings/repository';
 import type { RuntimeOptions } from './types';
 
@@ -21,9 +24,12 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         settingsRepository.initialize(config.defaultRetentionDays, clock());
         currencyRepository.initialize(config, clock());
 
+        const cursors = new CursorCodec(config.jwtSecret);
         const client = new CoinMarketCapClient(config, undefined, clock);
         const provider = options.provider ?? client;
         const requests = new AbortController();
+        const currencies = new CurrencyService(currencyRepository, settingsRepository, cursors);
+        const prices = new PriceService(priceRepository, currencyRepository, cursors, clock);
         const synchronization = new SynchronizationService(
             db,
             currencyRepository,
@@ -43,6 +49,8 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         const app = createApp({
             config,
             db,
+            prices,
+            currencies,
             logger,
         });
 
@@ -50,6 +58,8 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
             app,
             db,
             worker,
+            prices,
+            currencies,
             currencyRepository,
             priceRepository,
             settingsRepository,

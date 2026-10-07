@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync,SQLInputValue } from 'node:sqlite';
 import type { Config } from '../config/types';
 import { transaction } from '../database';
 import { ApiError,UpstreamError } from '../errors';
@@ -53,6 +53,29 @@ export class CurrencyRepository {
         return this.db
             .prepare('SELECT * FROM cryptocurrencies WHERE cmc_id = ?')
             .get(cmcId) as unknown as CurrencyRow | undefined;
+    }
+
+    maxId(): number {
+        return Number(
+            this.db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM cryptocurrencies').get()!.id,
+        );
+    }
+
+    list(after: number, snapshot: number, limit: number, enabled?: boolean): CurrencyRow[] {
+        const filter = enabled === undefined ? '' : ' AND tracking_enabled = ?';
+        const args: SQLInputValue[] = [after, snapshot];
+        if (enabled !== undefined) {
+            args.push(enabled ? 1 : 0);
+        }
+        return this.db
+            .prepare(
+                `
+                    SELECT * FROM cryptocurrencies
+                    WHERE id > ? AND id <= ?${filter}
+                    ORDER BY id LIMIT ?
+                `,
+            )
+            .all(...args, limit) as unknown as CurrencyRow[];
     }
 
     create(
