@@ -17,6 +17,7 @@ function main(): void {
         }
         closing = true;
         runtime.logger.info('server.stopping', { reason });
+        runtime.cancelRequests();
         const deadline = setTimeout(() => {
             runtime.logger.error('server.shutdown_timeout');
             server.closeAllConnections();
@@ -24,6 +25,7 @@ function main(): void {
         }, config.shutdownTimeoutMs);
         try {
             await Promise.all([
+                runtime.worker.stop(),
                 new Promise<void>((resolve, reject) =>
                     server.close((error) =>
                         error && (error as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING'
@@ -52,6 +54,7 @@ function main(): void {
         void shutdown('listen_error', 1);
     });
     server.listen(config.port, config.host, () => {
+        runtime.worker.start();
         runtime.logger.info('server.started', { host: config.host, port: config.port });
     });
 }
