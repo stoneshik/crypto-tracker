@@ -1,4 +1,5 @@
 import { setImmediate as yieldToRequests } from 'node:timers/promises';
+import { AuthRepository } from '../auth/repository';
 import type { Config } from '../config/types';
 import { CurrencyRepository } from '../currencies/repository';
 import { PriceRepository } from '../prices/repository';
@@ -16,6 +17,7 @@ export class SyncWorker {
 
     constructor(
         private readonly currencies: CurrencyRepository,
+        private readonly auth: AuthRepository,
         private readonly prices: PriceRepository,
         private readonly synchronization: SynchronizationService,
         private readonly config: Config,
@@ -58,6 +60,7 @@ export class SyncWorker {
     private async cycle(): Promise<void> {
         const now = this.clock();
         if (now - this.lastCleanup >= this.config.cleanupIntervalSeconds * 1000) {
+            this.auth.cleanup(now);
             while (
                 !this.stopping &&
                 this.prices.deleteExpired(now, this.config.cleanupBatchSize) ===

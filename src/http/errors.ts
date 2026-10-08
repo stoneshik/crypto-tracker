@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler,RequestHandler } from 'express';
+import { clearRefreshCookie } from '../auth/cookies';
 import type { Config } from '../config/types';
 import { ApiError } from '../errors';
 import type { Logger } from '../types';
@@ -27,7 +28,7 @@ export const notFound: RequestHandler = (_req, _res, next) => {
     next(new ApiError(404, 'RESOURCE_NOT_FOUND', 'Маршрут не найден'));
 };
 
-export function createErrorHandler(_config: Config, logger: Logger): ErrorRequestHandler {
+export function createErrorHandler(config: Config, logger: Logger): ErrorRequestHandler {
     return (error: unknown, req, res, next) => {
         if (res.headersSent) {
             next(error);
@@ -39,6 +40,9 @@ export function createErrorHandler(_config: Config, logger: Logger): ErrorReques
         }
         if (failure.status === 401) {
             res.set('WWW-Authenticate', 'Bearer');
+            if (req.originalUrl.split('?')[0] === '/api/v1/auth/tokens') {
+                clearRefreshCookie(res, config);
+            }
         }
         if (failure.retryAfterSeconds) {
             res.set('Retry-After', String(failure.retryAfterSeconds));

@@ -1,15 +1,26 @@
 import type { RequestHandler } from 'express';
-import type { Config } from '../config/types';
 import { ApiError } from '../errors';
-import { equalSecrets } from '../shared/crypto';
+import type { AuthService } from './service';
+import type { Principal } from './types';
 
-export function requireAuthentication(config: Config): RequestHandler {
+export function requireAuthentication(auth: AuthService, allowServiceKey = true): RequestHandler {
     return (req, res, next) => {
-        const match = /^Bearer ([^ ]+)$/i.exec(req.headers.authorization ?? '');
-        if (!match?.[1] || !config.serviceApiKey || !equalSecrets(match[1], config.serviceApiKey)) {
-            throw new ApiError(401, 'UNAUTHORIZED', 'Требуется авторизация');
-        }
-        res.locals.principal = { kind: 'service' };
+        res.locals.principal = auth.authenticate(req.headers.authorization, allowServiceKey);
         next();
     };
 }
+
+export function limitAuthRequests(auth: AuthService, scope: string): RequestHandler {
+    return (req, _res, next) => {
+        auth.checkRateLimit(scope, req.ip ?? req.socket.remoteAddress ?? 'unknown');
+        next();
+    };
+}
+
+export const requireAdmin: RequestHandler = (_req, res, next) => {
+    const principal = res.locals.principal as Principal;
+    if (principal.kind !== 'user' || principal.user.role !== 'ADMIN') {
+        throw new ApiError(403, 'FORBIDDEN', 'Требуются права администратора');
+    }
+    next();
+};

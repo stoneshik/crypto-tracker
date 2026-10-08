@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { AuthService } from './auth/service';
 import type { Config } from './config/types';
 import type { CurrencyService } from './currencies/service';
 import type { CatalogProvider,QuoteProvider } from './integrations/coinmarketcap/types';
@@ -8,6 +9,7 @@ export interface AppDependencies {
     config: Config;
     db: DatabaseSync;
     logger: Logger;
+    auth: AuthService;
     prices: PriceService;
     currencies: CurrencyService;
 }

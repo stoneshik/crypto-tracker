@@ -31,3 +31,10 @@ npm test
 Тесты используют временные файлы SQLite и подмену ответов CoinMarketCap.
 
 Для графиков добавлена агрегация истории: OHLC, средняя цена и число наблюдений. Список поддерживаемых интервалов есть в OpenAPI.
+
+## Авторизация
+
+Регистрация: `POST /api/v1/users`. Вход: `POST /api/v1/auth/sessions`.
+Access token передаётся как Bearer, refresh token - через HttpOnly cookie.
+Обновление токена: `POST /api/v1/auth/tokens`, выход: `DELETE /api/v1/auth/sessions/current`.
+Регистрация создаёт роль USER. Для паролей используется scrypt, JWT подписывается HS256.

@@ -1,4 +1,7 @@
 import { createApp } from './app';
+import { JwtTokens } from './auth/jwt';
+import { AuthRepository } from './auth/repository';
+import { AuthService } from './auth/service';
 import type { Config } from './config/types';
 import { CurrencyRepository } from './currencies/repository';
 import { CurrencyService } from './currencies/service';
@@ -18,16 +21,19 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
     try {
         const clock = options.clock ?? Date.now;
         const logger = createLogger(config.logLevel);
+        const authRepository = new AuthRepository(db);
         const currencyRepository = new CurrencyRepository(db);
         const priceRepository = new PriceRepository(db);
         const settingsRepository = new SettingsRepository(db);
         settingsRepository.initialize(config.defaultRetentionDays, clock());
         currencyRepository.initialize(config, clock());
 
+        const tokens = new JwtTokens(config);
         const cursors = new CursorCodec(config.jwtSecret);
         const client = new CoinMarketCapClient(config, undefined, clock);
         const provider = options.provider ?? client;
         const requests = new AbortController();
+        const auth = new AuthService(authRepository, tokens, config, clock);
         const currencies = new CurrencyService(currencyRepository, settingsRepository, cursors);
         const prices = new PriceService(priceRepository, currencyRepository, cursors, clock);
         const synchronization = new SynchronizationService(
@@ -40,6 +46,7 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         );
         const worker = new SyncWorker(
             currencyRepository,
+            authRepository,
             priceRepository,
             synchronization,
             config,
@@ -49,6 +56,7 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         const app = createApp({
             config,
             db,
+            auth,
             prices,
             currencies,
             logger,
@@ -58,11 +66,14 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
             app,
             db,
             worker,
+            auth,
             prices,
             currencies,
+            authRepository,
             currencyRepository,
             priceRepository,
             settingsRepository,
+            tokens,
             logger,
 
             cancelRequests() {

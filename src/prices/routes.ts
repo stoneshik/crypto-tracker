@@ -25,13 +25,13 @@ class PriceController {
 
 import { Router } from 'express';
 import { requireAuthentication } from '../auth/middleware';
-import type { Config } from '../config/types';
+import type { AuthService } from '../auth/service';
 import { requireEmptyBody,requireEmptyQuery } from '../http/request-validation';
 
-export function createPriceRouter(prices: PriceService, config: Config): Router {
+export function createPriceRouter(prices: PriceService, auth: AuthService): Router {
     const router = Router();
     const controller = new PriceController(prices);
-    const read = [requireAuthentication(config), requireEmptyBody];
+    const read = [requireAuthentication(auth), requireEmptyBody];
     router.get('/prices/latest', ...read, controller.listLatest);
     router.get(
         '/cryptocurrencies/:cryptocurrencyId/prices/latest',

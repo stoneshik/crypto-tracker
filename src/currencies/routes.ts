@@ -17,13 +17,13 @@ class CurrencyController {
 
 import { Router } from 'express';
 import { requireAuthentication } from '../auth/middleware';
-import type { Config } from '../config/types';
+import type { AuthService } from '../auth/service';
 import { requireEmptyBody,requireEmptyQuery } from '../http/request-validation';
 
-export function createCurrencyRouter(currencies: CurrencyService, config: Config): Router {
+export function createCurrencyRouter(currencies: CurrencyService, auth: AuthService): Router {
     const router = Router();
     const controller = new CurrencyController(currencies);
-    const authenticated = requireAuthentication(config);
+    const authenticated = requireAuthentication(auth);
 
     router.get('/cryptocurrencies', authenticated, requireEmptyBody, controller.list);
     router.get(
