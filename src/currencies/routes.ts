@@ -18,7 +18,7 @@ class CurrencyController {
 import { Router } from 'express';
 import { requireAuthentication } from '../auth/middleware';
 import type { Config } from '../config/types';
-import { requireEmptyBody } from '../http/request-validation';
+import { requireEmptyBody,requireEmptyQuery } from '../http/request-validation';
 
 export function createCurrencyRouter(currencies: CurrencyService, config: Config): Router {
     const router = Router();
@@ -26,5 +26,12 @@ export function createCurrencyRouter(currencies: CurrencyService, config: Config
     const authenticated = requireAuthentication(config);
 
     router.get('/cryptocurrencies', authenticated, requireEmptyBody, controller.list);
+    router.get(
+        '/cryptocurrencies/:cryptocurrencyId',
+        authenticated,
+        requireEmptyBody,
+        requireEmptyQuery,
+        controller.get,
+    );
     return router;
 }

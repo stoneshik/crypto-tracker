@@ -1,11 +1,11 @@
 import { CurrencyRepository } from '../currencies/repository';
+import { invalid } from '../errors';
 import { ids,object,period,positiveInteger } from '../validation';
 import { CursorCodec } from './cursor';
-import { toLatestQuote,toObservation } from './mappers';
+import { iso,toLatestQuote,toObservation } from './mappers';
 import { PriceRepository } from './repository';
 
 export class PriceService {
-
     constructor(
         private readonly repository: PriceRepository,
         private readonly currencies: CurrencyRepository,
@@ -88,6 +88,34 @@ export class PriceService {
                       })
                     : null,
             },
+        };
+    }
+
+    aggregates(id: number, input: unknown) {
+        this.currencies.get(id);
+        const query = object(input, ['from', 'to', 'intervalSeconds'], 'query');
+        const { from, to } = period(query);
+        const intervalSeconds = positiveInteger(query.intervalSeconds, 'intervalSeconds');
+        if (![60, 300, 900, 3600, 86400].includes(intervalSeconds)) {
+            throw invalid('intervalSeconds', 'query', 'Допустимы 60, 300, 900, 3600, 86400');
+        }
+        const intervalMs = intervalSeconds * 1000;
+        const count = Math.ceil(to / intervalMs) - Math.floor(from / intervalMs);
+        if (count > 2000) {
+            throw invalid('intervalSeconds', 'query', 'Увеличьте интервал: максимум 2000 корзин');
+        }
+        const rows = this.repository.aggregates(id, from, to, intervalMs);
+        return {
+            cryptocurrencyId: id,
+            quoteCurrency: 'USD',
+            from: iso(from),
+            to: iso(to),
+            intervalSeconds,
+            data: rows.map(({ bucket, ...values }) => ({
+                bucketStart: iso(bucket!),
+                bucketEnd: iso(bucket! + intervalMs),
+                ...values,
+            })),
         };
     }
 }

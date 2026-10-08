@@ -3,7 +3,6 @@ import { transaction } from '../database';
 import type { HistoryRow,LatestRow,Quote } from './types';
 
 export class PriceRepository {
-
     constructor(private readonly db: DatabaseSync) {}
 
     maxHistoryId(): number {
@@ -57,6 +56,36 @@ export class PriceRepository {
                 afterId,
                 limit,
             ) as unknown as HistoryRow[];
+    }
+
+    aggregates(id: number, from: number, to: number, intervalMs: number): Record<string, number>[] {
+        return this.db
+            .prepare(
+                `
+                    WITH observations AS (
+                        SELECT *, CAST(received_at / ? AS INTEGER) * ? AS bucket
+                        FROM price_history
+                        WHERE cryptocurrency_id = ? AND received_at >= ? AND received_at < ?
+                    ), ordered AS (
+                        SELECT *,
+                            ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY received_at, id) AS first_row,
+                            ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY received_at DESC, id DESC) AS last_row
+                        FROM observations
+                    )
+                    SELECT
+                        bucket,
+                        COUNT(*) AS count,
+                        MIN(price) AS low,
+                        MAX(price) AS high,
+                        AVG(price) AS average,
+                        MAX(CASE WHEN first_row = 1 THEN price END) AS open,
+                        MAX(CASE WHEN last_row = 1 THEN price END) AS close
+                    FROM ordered
+                    GROUP BY bucket
+                    ORDER BY bucket
+                `,
+            )
+            .all(intervalMs, intervalMs, id, from, to) as unknown as Record<string, number>[];
     }
 
     saveQuote(id: number, quote: Quote, now: number): boolean {
