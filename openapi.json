@@ -5,748 +5,358 @@
         "version": "1.0.0",
         "description": "Котировки CoinMarketCap в USD. USER читает данные, ADMIN управляет валютами и историей.\nСписок валют общий для всех пользователей. x-roles указывает доступ к операции.\n\nВремя возвращается в UTC. Периоды [from, to) относятся к receivedAt.\nЧтение цен и истории обращается к БД; каталог запрашивается у CoinMarketCap. История накапливается с начала отслеживания.\nНеизвестные поля и query-параметры отклоняются. Максимальный размер JSON - 16 KiB.\n\nКлюч CMC_API_KEY хранится только на сервере. Фронтенд использует JWT.\nСлужебный SERVICE_API_KEY также задаётся в окружении и не выдаётся фронтенду.\nПри входе выдаётся JWT на 15 минут и refresh cookie на срок сессии - 7 суток.\n\nОшибки: 400 - формат запроса, 401 - авторизация, 403 - права или Origin,\n404 - ресурс не найден, 409 - конфликт, 413 - размер тела, 415 - Content-Type,\n422 - недопустимые значения, 429 - лимит запросов, 500 - ошибка сервера,\n502/503/504 - ошибка, недоступность или таймаут CoinMarketCap.\nX-Request-Id возвращается во всех ответах; Retry-After используется при 429/503.\nСлужебный API key разрешает только чтение валют и цен. До 100 валют; начальные настройки берутся из окружения и затем хранятся в БД."
     },
-    "servers": [
-        {
-            "url": "/api/v1"
-        }
-    ],
+    "servers": [{"url": "/api/v1"}],
     "tags": [
-        {
-            "name": "Authentication"
-        },
-        {
-            "name": "Users"
-        },
-        {
-            "name": "Cryptocurrencies"
-        },
-        {
-            "name": "Prices"
-        },
-        {
-            "name": "Settings"
-        },
-        {
-            "name": "Synchronizations"
-        },
-        {
-            "name": "History deletions"
-        }
+        {"name": "Authentication"},
+        {"name": "Users"},
+        {"name": "Cryptocurrencies"},
+        {"name": "Prices"},
+        {"name": "Settings"},
+        {"name": "Synchronizations"},
+        {"name": "History deletions"}
     ],
-    "security": [
-        {
-            "BearerAuth": []
-        },
-        {
-            "ServiceApiKey": []
-        }
-    ],
+    "security": [{"BearerAuth": []}, {"ServiceApiKey": []}],
     "paths": {
         "/users": {
             "post": {
-                "tags": [
-                    "Users"
-                ],
+                "tags": ["Users"],
                 "summary": "Зарегистрировать пользователя",
                 "operationId": "registerUser",
                 "description": "Создаёт USER без автоматического входа. Email уникален без учёта регистра. ADMIN создаётся серверной командой. Команда npm run admin:create использует ADMIN_EMAIL и ADMIN_PASSWORD из окружения.",
                 "security": [],
-                "x-roles": [
-                    "ANONYMOUS"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UserRegistration"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ANONYMOUS"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserRegistration"}}}},
                 "responses": {
-                    "201": {
-                        "description": "Создано",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/User"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "201": {"description": "Создано", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
+                }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "tags": ["Users"],
+                "summary": "Получить свой профиль",
+                "operationId": "getCurrentUser",
+                "description": "Только пользовательский JWT; служебный ключ не принимается.",
+                "security": [{"BearerAuth": []}],
+                "x-roles": ["USER", "ADMIN"],
+                "responses": {
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/auth/sessions": {
             "post": {
-                "tags": [
-                    "Authentication"
-                ],
+                "tags": ["Authentication"],
                 "summary": "Войти и создать сессию",
                 "operationId": "createSession",
                 "description": "Возвращает JWT и устанавливает refresh cookie. При наличии Origin проверяется его совпадение с origin фронтенда.",
                 "security": [],
-                "x-roles": [
-                    "ANONYMOUS"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SessionCredentials"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ANONYMOUS"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SessionCredentials"}}}},
                 "responses": {
                     "201": {
                         "description": "Создано",
-                        "headers": {
-                            "Cache-Control": {
-                                "$ref": "#/components/headers/NoStore"
-                            },
-                            "Set-Cookie": {
-                                "$ref": "#/components/headers/RefreshCookie"
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AccessTokenResponse"
-                                }
-                            }
-                        }
+                        "headers": {"Cache-Control": {"$ref": "#/components/headers/NoStore"}, "Set-Cookie": {"$ref": "#/components/headers/RefreshCookie"}},
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AccessTokenResponse"}}}
                     },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/auth/tokens": {
             "post": {
-                "tags": [
-                    "Authentication"
-                ],
+                "tags": ["Authentication"],
                 "summary": "Обновить JWT по refresh cookie",
                 "operationId": "refreshAccessToken",
                 "description": "Без тела запроса. Меняет refresh token на новый JWT и cookie. Повторное использование старого refresh token отзывает сессию. Срок сессии не продлевается; параллельные refresh-запросы запрещены на клиенте. Origin проверяется.",
-                "security": [
-                    {
-                        "RefreshCookieAuth": []
-                    }
-                ],
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
+                "security": [{"RefreshCookieAuth": []}],
+                "x-roles": ["USER", "ADMIN"],
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "headers": {
-                            "Cache-Control": {
-                                "$ref": "#/components/headers/NoStore"
-                            },
-                            "Set-Cookie": {
-                                "$ref": "#/components/headers/RefreshCookie"
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AccessTokenResponse"
-                                }
-                            }
-                        }
+                        "headers": {"Cache-Control": {"$ref": "#/components/headers/NoStore"}, "Set-Cookie": {"$ref": "#/components/headers/RefreshCookie"}},
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AccessTokenResponse"}}}
                     },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/auth/sessions/current": {
             "delete": {
-                "tags": [
-                    "Authentication"
-                ],
+                "tags": ["Authentication"],
                 "summary": "Выйти из текущей сессии",
                 "operationId": "deleteCurrentSession",
                 "description": "Отзывает текущую сессию и все её JWT, очищает cookie. JWT или refresh cookie; если оба действительны, они должны относиться к одной сессии. Другие сессии сохраняются. Origin проверяется; тело не принимается.",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "RefreshCookieAuth": []
-                    }
-                ],
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
+                "security": [{"BearerAuth": []}, {"RefreshCookieAuth": []}],
+                "x-roles": ["USER", "ADMIN"],
                 "responses": {
                     "204": {
                         "description": "Удалено",
-                        "headers": {
-                            "Set-Cookie": {
-                                "$ref": "#/components/headers/ClearRefreshCookie"
-                            },
-                            "Cache-Control": {
-                                "$ref": "#/components/headers/NoStore"
-                            }
-                        }
+                        "headers": {"Set-Cookie": {"$ref": "#/components/headers/ClearRefreshCookie"}, "Cache-Control": {"$ref": "#/components/headers/NoStore"}}
                     },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/cryptocurrency-catalog": {
             "get": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Найти актив в каталоге CoinMarketCap",
                 "operationId": "findCatalogCryptocurrencies",
                 "description": "Точный поиск символа без учёта регистра. Символ может соответствовать нескольким активам; для добавления используется cmcId. Нет совпадений - пустой список.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "parameters": [
-                    {
-                        "name": "symbol",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 32,
-                            "pattern": "^[A-Za-z0-9$@._-]+$"
-                        }
-                    }
-                ],
+                "x-roles": ["ADMIN"],
+                "parameters": [{"name": "symbol", "in": "query", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 32, "pattern": "^[A-Za-z0-9$@._-]+$"}}],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CatalogResponse"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CatalogResponse"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/cryptocurrencies": {
             "get": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Получить отслеживаемые валюты",
                 "operationId": "listCryptocurrencies",
                 "description": "Порядок id ASC. Без фильтра возвращаются и приостановленные валюты.",
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
+                "x-roles": ["USER", "ADMIN"],
                 "parameters": [
-                    {
-                        "$ref": "#/components/parameters/PageLimit"
-                    },
-                    {
-                        "$ref": "#/components/parameters/Cursor"
-                    },
-                    {
-                        "name": "trackingEnabled",
-                        "in": "query",
-                        "schema": {
-                            "type": "boolean"
-                        }
-                    }
+                    {"$ref": "#/components/parameters/PageLimit"},
+                    {"$ref": "#/components/parameters/Cursor"},
+                    {"name": "trackingEnabled", "in": "query", "schema": {"type": "boolean"}}
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CryptocurrencyPage"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CryptocurrencyPage"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             },
             "post": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Добавить валюту в отслеживание",
                 "operationId": "createCryptocurrency",
                 "description": "Название и символ берутся из CoinMarketCap. Дубликат cmcId - 409, неподдерживаемый актив - 422. Первая синхронизация планируется сразу при включённом отслеживании. Максимум 100 валют. Интервал по умолчанию берётся из POLL_INTERVAL_SECONDS.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CryptocurrencyCreate"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ADMIN"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CryptocurrencyCreate"}}}},
                 "responses": {
                     "201": {
                         "description": "Создано",
-                        "headers": {
-                            "Location": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "uri-reference"
-                                }
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Cryptocurrency"
-                                }
-                            }
-                        }
+                        "headers": {"Location": {"schema": {"type": "string", "format": "uri-reference"}}},
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Cryptocurrency"}}}
                     },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             },
             "patch": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Массово изменить политику хранения",
                 "operationId": "updateCryptocurrenciesRetention",
                 "description": "Атомарно меняет политику выбранных валют, включая приостановленные. Неизвестный ID - 404 без частичного обновления. inherit сбрасывает индивидуальные настройки. Новые валюты операция не затрагивает.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BulkCryptocurrencyUpdate"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ADMIN"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BulkCryptocurrencyUpdate"}}}},
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BulkUpdateResult"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BulkUpdateResult"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/cryptocurrencies/{cryptocurrencyId}": {
-            "parameters": [
-                {
-                    "$ref": "#/components/parameters/CryptocurrencyId"
-                }
-            ],
+            "parameters": [{"$ref": "#/components/parameters/CryptocurrencyId"}],
             "get": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Получить валюту и состояние отслеживания",
                 "operationId": "getCryptocurrency",
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
+                "x-roles": ["USER", "ADMIN"],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Cryptocurrency"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Cryptocurrency"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             },
             "patch": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Изменить настройки валюты",
                 "operationId": "updateCryptocurrency",
                 "description": "Переданные поля заменяются, остальные сохраняются. Пауза останавливает новые автоопросы; текущий может завершиться. Включение планирует опрос сразу. Изменение интервала пересчитывает следующий запуск от последнего успеха.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CryptocurrencyUpdate"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ADMIN"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CryptocurrencyUpdate"}}}},
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Cryptocurrency"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Cryptocurrency"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             },
             "delete": {
-                "tags": [
-                    "Cryptocurrencies"
-                ],
+                "tags": ["Cryptocurrencies"],
                 "summary": "Удалить валюту и связанные цены",
                 "operationId": "deleteCryptocurrency",
                 "description": "Удаляет валюту, историю и последнюю цену. Для паузы используйте trackingEnabled=false. Активное ручное задание для валюты - 409. Поздний ответ автоопроса не должен воссоздать запись.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Удалено"
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
-                }
+                "x-roles": ["ADMIN"],
+                "responses": {"204": {"description": "Удалено"}, "default": {"$ref": "#/components/responses/Error"}}
             }
         },
         "/prices/latest": {
             "get": {
-                "tags": [
-                    "Prices"
-                ],
+                "tags": ["Prices"],
                 "summary": "Получить последние сохранённые котировки",
                 "operationId": "listLatestPrices",
                 "description": "По cryptocurrencyId ASC. Без фильтра - все валюты, включая приостановленные. pending означает, что цена ещё не получена.",
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/CryptocurrencyIds"
-                    },
-                    {
-                        "$ref": "#/components/parameters/PageLimit"
-                    },
-                    {
-                        "$ref": "#/components/parameters/Cursor"
-                    }
-                ],
+                "x-roles": ["USER", "ADMIN"],
+                "parameters": [{"$ref": "#/components/parameters/CryptocurrencyIds"}, {"$ref": "#/components/parameters/PageLimit"}, {"$ref": "#/components/parameters/Cursor"}],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LatestQuotePage"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LatestQuotePage"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/cryptocurrencies/{cryptocurrencyId}/prices/latest": {
-            "parameters": [
-                {
-                    "$ref": "#/components/parameters/CryptocurrencyId"
-                }
-            ],
+            "parameters": [{"$ref": "#/components/parameters/CryptocurrencyId"}],
             "get": {
-                "tags": [
-                    "Prices"
-                ],
+                "tags": ["Prices"],
                 "summary": "Получить последнюю котировку валюты",
                 "operationId": "getLatestPrice",
                 "description": "Нет полученной цены - 200 с status=pending. Нет самой валюты - 404. Очистка истории не удаляет последнюю котировку.",
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
+                "x-roles": ["USER", "ADMIN"],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/QuoteSnapshot"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/QuoteSnapshot"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/cryptocurrencies/{cryptocurrencyId}/price-history": {
-            "parameters": [
-                {
-                    "$ref": "#/components/parameters/CryptocurrencyId"
-                }
-            ],
+            "parameters": [{"$ref": "#/components/parameters/CryptocurrencyId"}],
             "get": {
-                "tags": [
-                    "Prices"
-                ],
+                "tags": ["Prices"],
                 "summary": "Получить историю цен за период",
                 "operationId": "listPriceHistory",
                 "description": "Период до 366 суток; порядок receivedAt ASC, id ASC. Курсор фиксирует границу набора на первой странице. Пропуски не заполняются. Пустая история - пустой список.",
-                "x-roles": [
-                    "USER",
-                    "ADMIN"
-                ],
+                "x-roles": ["USER", "ADMIN"],
                 "parameters": [
+                    {"$ref": "#/components/parameters/From"},
+                    {"$ref": "#/components/parameters/To"},
+                    {"$ref": "#/components/parameters/HistoryLimit"},
+                    {"$ref": "#/components/parameters/Cursor"}
+                ],
+                "responses": {
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriceHistoryPage"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
+                }
+            }
+        },
+        "/cryptocurrencies/{cryptocurrencyId}/price-aggregates": {
+            "parameters": [{"$ref": "#/components/parameters/CryptocurrencyId"}],
+            "get": {
+                "tags": ["Prices"],
+                "summary": "Получить агрегаты для графика",
+                "operationId": "getPriceAggregates",
+                "description": "До 366 суток и 2000 потенциальных корзин, иначе 422. Корзины привязаны к Unix epoch в UTC; учитываются только наблюдения [from, to). Пустые корзины пропускаются, порядок bucketStart ASC.",
+                "x-roles": ["USER", "ADMIN"],
+                "parameters": [
+                    {"$ref": "#/components/parameters/From"},
+                    {"$ref": "#/components/parameters/To"},
                     {
-                        "$ref": "#/components/parameters/From"
-                    },
-                    {
-                        "$ref": "#/components/parameters/To"
-                    },
-                    {
-                        "$ref": "#/components/parameters/HistoryLimit"
-                    },
-                    {
-                        "$ref": "#/components/parameters/Cursor"
+                        "name": "intervalSeconds",
+                        "in": "query",
+                        "required": true,
+                        "schema": {"type": "integer", "format": "int64", "minimum": 60, "maximum": 86400, "enum": [60, 300, 900, 3600, 86400]}
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PriceHistoryPage"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriceAggregatesResponse"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/settings": {
             "get": {
-                "tags": [
-                    "Settings"
-                ],
+                "tags": ["Settings"],
                 "summary": "Получить общие настройки",
                 "operationId": "getSettings",
-                "x-roles": [
-                    "ADMIN"
-                ],
+                "x-roles": ["ADMIN"],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Settings"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Settings"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             },
             "patch": {
-                "tags": [
-                    "Settings"
-                ],
+                "tags": ["Settings"],
                 "summary": "Изменить общую политику хранения",
                 "operationId": "updateSettings",
                 "description": "Меняет политику для валют с mode=inherit. Для сброса всех переопределений используйте массовый PATCH /cryptocurrencies с политикой inherit. Удалённые данные не восстанавливаются.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SettingsUpdate"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ADMIN"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SettingsUpdate"}}}},
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Settings"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Settings"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/price-synchronizations": {
             "post": {
-                "tags": [
-                    "Synchronizations"
-                ],
+                "tags": ["Synchronizations"],
                 "summary": "Создать задание обновления цен",
                 "operationId": "createPriceSynchronization",
                 "description": "202 означает принятие задания. Цели фиксируются при создании; пустой набор - 422. Ручной опрос доступен и для приостановленных валют. Пересечение с активным ручным заданием - 409; с автоопросом выполнение сериализуется. POST не идемпотентен. SYNC_ENABLED=false отключает только автоматический опрос. Для ручного запроса нужен серверный CMC_API_KEY.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SynchronizationCreate"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ADMIN"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SynchronizationCreate"}}}},
                 "responses": {
                     "202": {
                         "description": "Принято",
-                        "headers": {
-                            "Location": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "uri-reference"
-                                }
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Synchronization"
-                                }
-                            }
-                        }
+                        "headers": {"Location": {"schema": {"type": "string", "format": "uri-reference"}}},
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Synchronization"}}}
                     },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "default": {"$ref": "#/components/responses/Error"}
+                }
+            }
+        },
+        "/price-synchronizations/{synchronizationId}": {
+            "parameters": [{"$ref": "#/components/parameters/SynchronizationId"}],
+            "get": {
+                "tags": ["Synchronizations"],
+                "summary": "Получить состояние обновления цен",
+                "operationId": "getPriceSynchronization",
+                "description": "Состояние задания читается с HTTP 200, в том числе при ошибке синхронизации.",
+                "x-roles": ["ADMIN"],
+                "responses": {
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Synchronization"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         },
         "/price-history-deletions": {
             "post": {
-                "tags": [
-                    "History deletions"
-                ],
+                "tags": ["History deletions"],
                 "summary": "Создать задание очистки истории",
                 "operationId": "createPriceHistoryDeletion",
                 "description": "Удаляет историю за [from, to); from < to, to не позже текущего времени. Фиксирует цели и существующие записи при создании. Новые записи и последняя котировка сохраняются. Пустой набор валют - 422, пересекающееся задание - 409.",
-                "x-roles": [
-                    "ADMIN"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PriceHistoryDeletionCreate"
-                            }
-                        }
-                    }
-                },
+                "x-roles": ["ADMIN"],
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriceHistoryDeletionCreate"}}}},
                 "responses": {
                     "202": {
                         "description": "Принято",
-                        "headers": {
-                            "Location": {
-                                "schema": {
-                                    "type": "string",
-                                    "format": "uri-reference"
-                                }
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PriceHistoryDeletion"
-                                }
-                            }
-                        }
+                        "headers": {"Location": {"schema": {"type": "string", "format": "uri-reference"}}},
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriceHistoryDeletion"}}}
                     },
-                    "default": {
-                        "$ref": "#/components/responses/Error"
-                    }
+                    "default": {"$ref": "#/components/responses/Error"}
+                }
+            }
+        },
+        "/price-history-deletions/{deletionId}": {
+            "parameters": [{"$ref": "#/components/parameters/DeletionId"}],
+            "get": {
+                "tags": ["History deletions"],
+                "summary": "Получить состояние очистки истории",
+                "operationId": "getPriceHistoryDeletion",
+                "description": "deletedRows учитывает зафиксированные удаления. При failed возможен частичный результат; HTTP-статус чтения задания - 200.",
+                "x-roles": ["ADMIN"],
+                "responses": {
+                    "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriceHistoryDeletion"}}}},
+                    "default": {"$ref": "#/components/responses/Error"}
                 }
             }
         }
     },
     "components": {
         "securitySchemes": {
-            "BearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-                "description": "JWT пользователя. В Authorize указывается без префикса Bearer."
-            },
+            "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "JWT пользователя. В Authorize указывается без префикса Bearer."},
             "ServiceApiKey": {
                 "type": "apiKey",
                 "in": "header",
@@ -761,82 +371,29 @@
             }
         },
         "parameters": {
-            "CryptocurrencyId": {
-                "name": "cryptocurrencyId",
-                "in": "path",
-                "required": true,
-                "schema": {
-                    "$ref": "#/components/schemas/CryptocurrencyId"
-                }
-            },
-            "SynchronizationId": {
-                "name": "synchronizationId",
-                "in": "path",
-                "required": true,
-                "schema": {
-                    "type": "string",
-                    "format": "uuid"
-                }
-            },
-            "DeletionId": {
-                "name": "deletionId",
-                "in": "path",
-                "required": true,
-                "schema": {
-                    "type": "string",
-                    "format": "uuid"
-                }
-            },
-            "PageLimit": {
-                "name": "limit",
-                "in": "query",
-                "schema": {
-                    "type": "integer",
-                    "format": "int64",
-                    "minimum": 1,
-                    "maximum": 100,
-                    "default": 50
-                }
-            },
-            "HistoryLimit": {
-                "name": "limit",
-                "in": "query",
-                "schema": {
-                    "type": "integer",
-                    "format": "int64",
-                    "minimum": 1,
-                    "maximum": 1000,
-                    "default": 500
-                }
-            },
+            "CryptocurrencyId": {"name": "cryptocurrencyId", "in": "path", "required": true, "schema": {"$ref": "#/components/schemas/CryptocurrencyId"}},
+            "SynchronizationId": {"name": "synchronizationId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+            "DeletionId": {"name": "deletionId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+            "PageLimit": {"name": "limit", "in": "query", "schema": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 100, "default": 50}},
+            "HistoryLimit": {"name": "limit", "in": "query", "schema": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 1000, "default": 500}},
             "Cursor": {
                 "name": "cursor",
                 "in": "query",
-                "schema": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 2048
-                },
+                "schema": {"type": "string", "minLength": 1, "maxLength": 2048},
                 "description": "nextCursor предыдущей страницы; фильтры не меняются. Некорректный курсор - 400."
             },
             "From": {
                 "name": "from",
                 "in": "query",
                 "required": true,
-                "schema": {
-                    "type": "string",
-                    "format": "date-time"
-                },
+                "schema": {"type": "string", "format": "date-time"},
                 "description": "Начало включительно, RFC 3339 с часовым поясом."
             },
             "To": {
                 "name": "to",
                 "in": "query",
                 "required": true,
-                "schema": {
-                    "type": "string",
-                    "format": "date-time"
-                },
+                "schema": {"type": "string", "format": "date-time"},
                 "description": "Конец исключительно; from < to. Для чтения будущая дата разрешена."
             },
             "CryptocurrencyIds": {
@@ -844,74 +401,28 @@
                 "in": "query",
                 "style": "form",
                 "explode": false,
-                "schema": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "minItems": 1,
-                    "maxItems": 100,
-                    "uniqueItems": true
-                },
+                "schema": {"type": "array", "items": {"$ref": "#/components/schemas/CryptocurrencyId"}, "minItems": 1, "maxItems": 100, "uniqueItems": true},
                 "description": "ID через запятую. Без параметра - все валюты; неизвестный ID - 404."
             }
         },
         "headers": {
-            "NoStore": {
-                "schema": {
-                    "type": "string",
-                    "enum": [
-                        "no-store"
-                    ]
-                }
-            },
+            "NoStore": {"schema": {"type": "string", "enum": ["no-store"]}},
             "RefreshCookie": {
-                "schema": {
-                    "type": "string"
-                },
+                "schema": {"type": "string"},
                 "description": "refresh_token; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Secure в production. Max-Age - оставшийся срок сессии."
             },
-            "ClearRefreshCookie": {
-                "schema": {
-                    "type": "string"
-                },
-                "description": "refresh_token с Max-Age=0 и тем же Path."
-            }
+            "ClearRefreshCookie": {"schema": {"type": "string"}, "description": "refresh_token с Max-Age=0 и тем же Path."}
         },
         "responses": {
             "Error": {
                 "description": "Ошибка запроса. Значение status совпадает с HTTP-кодом ответа.",
-                "content": {
-                    "application/problem+json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/Problem"
-                        }
-                    }
-                }
+                "content": {"application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}}
             }
         },
         "schemas": {
-            "Role": {
-                "type": "string",
-                "enum": [
-                    "USER",
-                    "ADMIN"
-                ]
-            },
-            "CryptocurrencyId": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 1,
-                "maximum": 9007199254740991,
-                "description": "Внутренний ID; отличается от cmcId."
-            },
-            "CoinMarketCapId": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 1,
-                "maximum": 9007199254740991,
-                "description": "Уникальный ID актива CoinMarketCap. Символ не уникален."
-            },
+            "Role": {"type": "string", "enum": ["USER", "ADMIN"]},
+            "CryptocurrencyId": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 9007199254740991, "description": "Внутренний ID; отличается от cmcId."},
+            "CoinMarketCapId": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 9007199254740991, "description": "Уникальный ID актива CoinMarketCap. Символ не уникален."},
             "PollingInterval": {
                 "type": "integer",
                 "format": "int64",
@@ -919,85 +430,33 @@
                 "maximum": 86400,
                 "description": "Целевой интервал опроса в секундах; ошибки и квоты могут задерживать запуск."
             },
-            "QuoteCurrency": {
-                "type": "string",
-                "enum": [
-                    "USD"
-                ]
-            },
+            "QuoteCurrency": {"type": "string", "enum": ["USD"]},
             "LimitedRetentionPolicy": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "mode": {
-                        "type": "string",
-                        "enum": [
-                            "days"
-                        ]
-                    },
-                    "days": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 1,
-                        "maximum": 3650
-                    }
-                },
-                "required": [
-                    "mode",
-                    "days"
-                ],
-                "example": {
-                    "mode": "days",
-                    "days": 30
-                }
+                "properties": {"mode": {"type": "string", "enum": ["days"]}, "days": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 3650}},
+                "required": ["mode", "days"],
+                "example": {"mode": "days", "days": 30}
             },
             "UnlimitedRetentionPolicy": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "mode": {
-                        "type": "string",
-                        "enum": [
-                            "forever"
-                        ]
-                    }
-                },
-                "required": [
-                    "mode"
-                ],
-                "example": {
-                    "mode": "forever"
-                }
+                "properties": {"mode": {"type": "string", "enum": ["forever"]}},
+                "required": ["mode"],
+                "example": {"mode": "forever"}
             },
             "InheritedRetentionPolicy": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "mode": {
-                        "type": "string",
-                        "enum": [
-                            "inherit"
-                        ]
-                    }
-                },
-                "required": [
-                    "mode"
-                ],
-                "example": {
-                    "mode": "inherit"
-                }
+                "properties": {"mode": {"type": "string", "enum": ["inherit"]}},
+                "required": ["mode"],
+                "example": {"mode": "inherit"}
             },
             "RetentionPolicy": {
                 "oneOf": [
-                    {
-                        "$ref": "#/components/schemas/InheritedRetentionPolicy"
-                    },
-                    {
-                        "$ref": "#/components/schemas/LimitedRetentionPolicy"
-                    },
-                    {
-                        "$ref": "#/components/schemas/UnlimitedRetentionPolicy"
-                    }
+                    {"$ref": "#/components/schemas/InheritedRetentionPolicy"},
+                    {"$ref": "#/components/schemas/LimitedRetentionPolicy"},
+                    {"$ref": "#/components/schemas/UnlimitedRetentionPolicy"}
                 ],
                 "discriminator": {
                     "propertyName": "mode",
@@ -1010,192 +469,73 @@
                 "description": "inherit - общая политика, days - число суток, forever - без автоочистки."
             },
             "DefaultRetentionPolicy": {
-                "oneOf": [
-                    {
-                        "$ref": "#/components/schemas/LimitedRetentionPolicy"
-                    },
-                    {
-                        "$ref": "#/components/schemas/UnlimitedRetentionPolicy"
-                    }
-                ],
-                "discriminator": {
-                    "propertyName": "mode",
-                    "mapping": {
-                        "days": "#/components/schemas/LimitedRetentionPolicy",
-                        "forever": "#/components/schemas/UnlimitedRetentionPolicy"
-                    }
-                }
+                "oneOf": [{"$ref": "#/components/schemas/LimitedRetentionPolicy"}, {"$ref": "#/components/schemas/UnlimitedRetentionPolicy"}],
+                "discriminator": {"propertyName": "mode", "mapping": {"days": "#/components/schemas/LimitedRetentionPolicy", "forever": "#/components/schemas/UnlimitedRetentionPolicy"}}
             },
             "AllCryptocurrenciesSelection": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "scope": {
-                        "type": "string",
-                        "enum": [
-                            "all"
-                        ]
-                    }
-                },
-                "required": [
-                    "scope"
-                ],
+                "properties": {"scope": {"type": "string", "enum": ["all"]}},
+                "required": ["scope"],
                 "description": "Все существующие валюты, включая приостановленные; список фиксируется при принятии операции."
             },
             "SelectedCryptocurrenciesSelection": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "scope": {
-                        "type": "string",
-                        "enum": [
-                            "selected"
-                        ]
-                    },
-                    "cryptocurrencyIds": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/CryptocurrencyId"
-                        },
-                        "minItems": 1,
-                        "maxItems": 100,
-                        "uniqueItems": true
-                    }
+                    "scope": {"type": "string", "enum": ["selected"]},
+                    "cryptocurrencyIds": {"type": "array", "items": {"$ref": "#/components/schemas/CryptocurrencyId"}, "minItems": 1, "maxItems": 100, "uniqueItems": true}
                 },
-                "required": [
-                    "scope",
-                    "cryptocurrencyIds"
-                ],
+                "required": ["scope", "cryptocurrencyIds"],
                 "description": "Неизвестный ID отклоняет всю операцию."
             },
             "CryptocurrencySelection": {
-                "oneOf": [
-                    {
-                        "$ref": "#/components/schemas/AllCryptocurrenciesSelection"
-                    },
-                    {
-                        "$ref": "#/components/schemas/SelectedCryptocurrenciesSelection"
-                    }
-                ],
+                "oneOf": [{"$ref": "#/components/schemas/AllCryptocurrenciesSelection"}, {"$ref": "#/components/schemas/SelectedCryptocurrenciesSelection"}],
                 "discriminator": {
                     "propertyName": "scope",
-                    "mapping": {
-                        "all": "#/components/schemas/AllCryptocurrenciesSelection",
-                        "selected": "#/components/schemas/SelectedCryptocurrenciesSelection"
-                    }
+                    "mapping": {"all": "#/components/schemas/AllCryptocurrenciesSelection", "selected": "#/components/schemas/SelectedCryptocurrenciesSelection"}
                 }
             },
             "User": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
-                    },
-                    "role": {
-                        "$ref": "#/components/schemas/Role"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "id": {"type": "string", "format": "uuid"},
+                    "email": {"type": "string", "format": "email", "maxLength": 254},
+                    "role": {"$ref": "#/components/schemas/Role"},
+                    "createdAt": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "id",
-                    "email",
-                    "role",
-                    "createdAt"
-                ]
+                "required": ["id", "email", "role", "createdAt"]
             },
             "UserRegistration": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "minLength": 3,
-                        "maxLength": 254,
-                        "description": "trim и нижний регистр для проверки уникальности."
-                    },
-                    "password": {
-                        "type": "string",
-                        "format": "password",
-                        "minLength": 12,
-                        "maxLength": 128,
-                        "writeOnly": true,
-                        "description": "Без обрезки и нормализации."
-                    }
+                    "email": {"type": "string", "format": "email", "minLength": 3, "maxLength": 254, "description": "trim и нижний регистр для проверки уникальности."},
+                    "password": {"type": "string", "format": "password", "minLength": 12, "maxLength": 128, "writeOnly": true, "description": "Без обрезки и нормализации."}
                 },
-                "required": [
-                    "email",
-                    "password"
-                ]
+                "required": ["email", "password"]
             },
             "SessionCredentials": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "minLength": 3,
-                        "maxLength": 254
-                    },
-                    "password": {
-                        "type": "string",
-                        "format": "password",
-                        "minLength": 1,
-                        "maxLength": 128,
-                        "writeOnly": true
-                    }
+                    "email": {"type": "string", "format": "email", "minLength": 3, "maxLength": 254},
+                    "password": {"type": "string", "format": "password", "minLength": 1, "maxLength": 128, "writeOnly": true}
                 },
-                "required": [
-                    "email",
-                    "password"
-                ]
+                "required": ["email", "password"]
             },
             "AccessTokenResponse": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "accessToken": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "tokenType": {
-                        "type": "string",
-                        "enum": [
-                            "Bearer"
-                        ]
-                    },
-                    "expiresIn": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 1,
-                        "maximum": 9007199254740991
-                    },
-                    "sessionId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "user": {
-                        "$ref": "#/components/schemas/User"
-                    }
+                    "accessToken": {"type": "string", "minLength": 1},
+                    "tokenType": {"type": "string", "enum": ["Bearer"]},
+                    "expiresIn": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 9007199254740991},
+                    "sessionId": {"type": "string", "format": "uuid"},
+                    "user": {"$ref": "#/components/schemas/User"}
                 },
-                "required": [
-                    "accessToken",
-                    "tokenType",
-                    "expiresIn",
-                    "sessionId",
-                    "user"
-                ],
+                "required": ["accessToken", "tokenType", "expiresIn", "sessionId", "user"],
                 "description": "Refresh token передаётся только в cookie. JWT хранится в памяти вкладки; секрет подписи остаётся на сервере."
             },
             "SyncFailure": {
@@ -1215,91 +555,30 @@
                             "INTERNAL_ERROR"
                         ]
                     },
-                    "message": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 500
-                    },
-                    "occurredAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "message": {"type": "string", "minLength": 1, "maxLength": 500},
+                    "occurredAt": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "code",
-                    "message",
-                    "occurredAt"
-                ]
+                "required": ["code", "message", "occurredAt"]
             },
             "Cryptocurrency": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "id": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "cmcId": {
-                        "$ref": "#/components/schemas/CoinMarketCapId"
-                    },
-                    "symbol": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64
-                    },
-                    "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200
-                    },
-                    "trackingEnabled": {
-                        "type": "boolean"
-                    },
-                    "pollingIntervalSeconds": {
-                        "$ref": "#/components/schemas/PollingInterval"
-                    },
-                    "retentionPolicy": {
-                        "$ref": "#/components/schemas/RetentionPolicy"
-                    },
-                    "effectiveRetentionPolicy": {
-                        "$ref": "#/components/schemas/DefaultRetentionPolicy"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "Изменение записи, отдельно от lastSuccessfulSyncAt."
-                    },
-                    "lastAttemptAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "lastSuccessfulSyncAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "nextSyncAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true,
-                        "description": "null при выключенном отслеживании."
-                    },
-                    "syncState": {
-                        "type": "string",
-                        "enum": [
-                            "scheduled",
-                            "running",
-                            "error",
-                            "disabled"
-                        ]
-                    },
-                    "lastSyncError": {
-                        "$ref": "#/components/schemas/SyncFailure"
-                    }
+                    "id": {"$ref": "#/components/schemas/CryptocurrencyId"},
+                    "cmcId": {"$ref": "#/components/schemas/CoinMarketCapId"},
+                    "symbol": {"type": "string", "minLength": 1, "maxLength": 64},
+                    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+                    "trackingEnabled": {"type": "boolean"},
+                    "pollingIntervalSeconds": {"$ref": "#/components/schemas/PollingInterval"},
+                    "retentionPolicy": {"$ref": "#/components/schemas/RetentionPolicy"},
+                    "effectiveRetentionPolicy": {"$ref": "#/components/schemas/DefaultRetentionPolicy"},
+                    "createdAt": {"type": "string", "format": "date-time"},
+                    "updatedAt": {"type": "string", "format": "date-time", "description": "Изменение записи, отдельно от lastSuccessfulSyncAt."},
+                    "lastAttemptAt": {"type": "string", "format": "date-time", "nullable": true},
+                    "lastSuccessfulSyncAt": {"type": "string", "format": "date-time", "nullable": true},
+                    "nextSyncAt": {"type": "string", "format": "date-time", "nullable": true, "description": "null при выключенном отслеживании."},
+                    "syncState": {"type": "string", "enum": ["scheduled", "running", "error", "disabled"]},
+                    "lastSyncError": {"$ref": "#/components/schemas/SyncFailure"}
                 },
                 "required": [
                     "id",
@@ -1323,56 +602,21 @@
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "cmcId": {
-                        "$ref": "#/components/schemas/CoinMarketCapId"
-                    },
-                    "trackingEnabled": {
-                        "type": "boolean",
-                        "default": true
-                    },
-                    "pollingIntervalSeconds": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/PollingInterval"
-                            }
-                        ],
-                        "default": 300
-                    },
-                    "retentionPolicy": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/RetentionPolicy"
-                            }
-                        ],
-                        "default": {
-                            "mode": "inherit"
-                        }
-                    }
+                    "cmcId": {"$ref": "#/components/schemas/CoinMarketCapId"},
+                    "trackingEnabled": {"type": "boolean", "default": true},
+                    "pollingIntervalSeconds": {"allOf": [{"$ref": "#/components/schemas/PollingInterval"}], "default": 300},
+                    "retentionPolicy": {"allOf": [{"$ref": "#/components/schemas/RetentionPolicy"}], "default": {"mode": "inherit"}}
                 },
-                "required": [
-                    "cmcId"
-                ],
-                "example": {
-                    "cmcId": 1,
-                    "pollingIntervalSeconds": 300,
-                    "retentionPolicy": {
-                        "mode": "inherit"
-                    }
-                }
+                "required": ["cmcId"],
+                "example": {"cmcId": 1, "pollingIntervalSeconds": 300, "retentionPolicy": {"mode": "inherit"}}
             },
             "CryptocurrencyUpdate": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "trackingEnabled": {
-                        "type": "boolean"
-                    },
-                    "pollingIntervalSeconds": {
-                        "$ref": "#/components/schemas/PollingInterval"
-                    },
-                    "retentionPolicy": {
-                        "$ref": "#/components/schemas/RetentionPolicy"
-                    }
+                    "trackingEnabled": {"type": "boolean"},
+                    "pollingIntervalSeconds": {"$ref": "#/components/schemas/PollingInterval"},
+                    "retentionPolicy": {"$ref": "#/components/schemas/RetentionPolicy"}
                 },
                 "minProperties": 1
             },
@@ -1380,750 +624,255 @@
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "selection": {
-                        "$ref": "#/components/schemas/CryptocurrencySelection"
-                    },
+                    "selection": {"$ref": "#/components/schemas/CryptocurrencySelection"},
                     "changes": {
                         "type": "object",
                         "additionalProperties": false,
-                        "properties": {
-                            "retentionPolicy": {
-                                "$ref": "#/components/schemas/RetentionPolicy"
-                            }
-                        },
-                        "required": [
-                            "retentionPolicy"
-                        ]
+                        "properties": {"retentionPolicy": {"$ref": "#/components/schemas/RetentionPolicy"}},
+                        "required": ["retentionPolicy"]
                     }
                 },
-                "required": [
-                    "selection",
-                    "changes"
-                ]
+                "required": ["selection", "changes"]
             },
             "BulkUpdateResult": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "updatedCount": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "required": [
-                    "updatedCount",
-                    "updatedAt"
-                ]
+                "properties": {"updatedCount": {"type": "integer", "format": "int64", "minimum": 0, "maximum": 9007199254740991}, "updatedAt": {"type": "string", "format": "date-time"}},
+                "required": ["updatedCount", "updatedAt"]
             },
             "CatalogCryptocurrency": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "cmcId": {
-                        "$ref": "#/components/schemas/CoinMarketCapId"
-                    },
-                    "symbol": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64
-                    },
-                    "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200
-                    },
-                    "slug": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200
-                    },
-                    "isActive": {
-                        "type": "boolean"
-                    }
+                    "cmcId": {"$ref": "#/components/schemas/CoinMarketCapId"},
+                    "symbol": {"type": "string", "minLength": 1, "maxLength": 64},
+                    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+                    "slug": {"type": "string", "minLength": 1, "maxLength": 200},
+                    "isActive": {"type": "boolean"}
                 },
-                "required": [
-                    "cmcId",
-                    "symbol",
-                    "name",
-                    "slug",
-                    "isActive"
-                ]
+                "required": ["cmcId", "symbol", "name", "slug", "isActive"]
             },
             "CatalogResponse": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/CatalogCryptocurrency"
-                        }
-                    }
-                },
-                "required": [
-                    "data"
-                ]
+                "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/CatalogCryptocurrency"}}},
+                "required": ["data"]
             },
             "Page": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "nextCursor": {
-                        "type": "string",
-                        "nullable": true,
-                        "minLength": 1,
-                        "maxLength": 2048
-                    },
-                    "hasMore": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "nextCursor",
-                    "hasMore"
-                ],
+                "properties": {"nextCursor": {"type": "string", "nullable": true, "minLength": 1, "maxLength": 2048}, "hasMore": {"type": "boolean"}},
+                "required": ["nextCursor", "hasMore"],
                 "description": "nextCursor=null соответствует hasMore=false. Курсор непрозрачный и привязан к фильтрам."
             },
             "CryptocurrencyPage": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/Cryptocurrency"
-                        },
-                        "maxItems": 100
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/Page"
-                    }
-                },
-                "required": [
-                    "data",
-                    "page"
-                ]
+                "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Cryptocurrency"}, "maxItems": 100}, "page": {"$ref": "#/components/schemas/Page"}},
+                "required": ["data", "page"]
             },
             "AvailableQuote": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "cryptocurrencyId": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "quoteCurrency": {
-                        "$ref": "#/components/schemas/QuoteCurrency"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "fresh",
-                            "stale"
-                        ]
-                    },
-                    "price": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    },
-                    "receivedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "sourceUpdatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "cryptocurrencyId": {"$ref": "#/components/schemas/CryptocurrencyId"},
+                    "quoteCurrency": {"$ref": "#/components/schemas/QuoteCurrency"},
+                    "status": {"type": "string", "enum": ["fresh", "stale"]},
+                    "price": {"type": "number", "format": "double", "minimum": 0},
+                    "receivedAt": {"type": "string", "format": "date-time"},
+                    "sourceUpdatedAt": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "cryptocurrencyId",
-                    "quoteCurrency",
-                    "status",
-                    "price",
-                    "receivedAt",
-                    "sourceUpdatedAt"
-                ],
+                "required": ["cryptocurrencyId", "quoteCurrency", "status", "price", "receivedAt", "sourceUpdatedAt"],
                 "description": "fresh, если возраст receivedAt и sourceUpdatedAt не превышает два интервала опроса; иначе stale."
             },
             "PendingQuote": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "cryptocurrencyId": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "quoteCurrency": {
-                        "$ref": "#/components/schemas/QuoteCurrency"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "pending"
-                        ]
-                    }
+                    "cryptocurrencyId": {"$ref": "#/components/schemas/CryptocurrencyId"},
+                    "quoteCurrency": {"$ref": "#/components/schemas/QuoteCurrency"},
+                    "status": {"type": "string", "enum": ["pending"]}
                 },
-                "required": [
-                    "cryptocurrencyId",
-                    "quoteCurrency",
-                    "status"
-                ],
+                "required": ["cryptocurrencyId", "quoteCurrency", "status"],
                 "description": "Цена ещё не получена; поля цены и времени отсутствуют."
             },
             "QuoteSnapshot": {
-                "oneOf": [
-                    {
-                        "$ref": "#/components/schemas/AvailableQuote"
-                    },
-                    {
-                        "$ref": "#/components/schemas/PendingQuote"
-                    }
-                ],
+                "oneOf": [{"$ref": "#/components/schemas/AvailableQuote"}, {"$ref": "#/components/schemas/PendingQuote"}],
                 "discriminator": {
                     "propertyName": "status",
-                    "mapping": {
-                        "fresh": "#/components/schemas/AvailableQuote",
-                        "stale": "#/components/schemas/AvailableQuote",
-                        "pending": "#/components/schemas/PendingQuote"
-                    }
+                    "mapping": {"fresh": "#/components/schemas/AvailableQuote", "stale": "#/components/schemas/AvailableQuote", "pending": "#/components/schemas/PendingQuote"}
                 }
             },
             "LatestQuotePage": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/QuoteSnapshot"
-                        },
-                        "maxItems": 100
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/Page"
-                    }
-                },
-                "required": [
-                    "data",
-                    "page"
-                ]
+                "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/QuoteSnapshot"}, "maxItems": 100}, "page": {"$ref": "#/components/schemas/Page"}},
+                "required": ["data", "page"]
             },
             "PriceObservation": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 1,
-                        "maximum": 9007199254740991
-                    },
-                    "cryptocurrencyId": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "quoteCurrency": {
-                        "$ref": "#/components/schemas/QuoteCurrency"
-                    },
-                    "price": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    },
-                    "receivedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "sourceUpdatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "id": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 9007199254740991},
+                    "cryptocurrencyId": {"$ref": "#/components/schemas/CryptocurrencyId"},
+                    "quoteCurrency": {"$ref": "#/components/schemas/QuoteCurrency"},
+                    "price": {"type": "number", "format": "double", "minimum": 0},
+                    "receivedAt": {"type": "string", "format": "date-time"},
+                    "sourceUpdatedAt": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "id",
-                    "cryptocurrencyId",
-                    "quoteCurrency",
-                    "price",
-                    "receivedAt",
-                    "sourceUpdatedAt"
-                ],
+                "required": ["id", "cryptocurrencyId", "quoteCurrency", "price", "receivedAt", "sourceUpdatedAt"],
                 "description": "Успешное наблюдение. Неизменившаяся цена тоже сохраняется; без округления до центов."
             },
             "PriceHistoryPage": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/PriceObservation"
-                        },
-                        "maxItems": 1000
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/Page"
-                    }
-                },
-                "required": [
-                    "data",
-                    "page"
-                ]
+                "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/PriceObservation"}, "maxItems": 1000}, "page": {"$ref": "#/components/schemas/Page"}},
+                "required": ["data", "page"]
             },
             "PriceAggregate": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "bucketStart": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "bucketEnd": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 1,
-                        "maximum": 9007199254740991
-                    },
-                    "open": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    },
-                    "high": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    },
-                    "low": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    },
-                    "close": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    },
-                    "average": {
-                        "type": "number",
-                        "format": "double",
-                        "minimum": 0
-                    }
+                    "bucketStart": {"type": "string", "format": "date-time"},
+                    "bucketEnd": {"type": "string", "format": "date-time"},
+                    "count": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 9007199254740991},
+                    "open": {"type": "number", "format": "double", "minimum": 0},
+                    "high": {"type": "number", "format": "double", "minimum": 0},
+                    "low": {"type": "number", "format": "double", "minimum": 0},
+                    "close": {"type": "number", "format": "double", "minimum": 0},
+                    "average": {"type": "number", "format": "double", "minimum": 0}
                 },
-                "required": [
-                    "bucketStart",
-                    "bucketEnd",
-                    "count",
-                    "open",
-                    "high",
-                    "low",
-                    "close",
-                    "average"
-                ],
+                "required": ["bucketStart", "bucketEnd", "count", "open", "high", "low", "close", "average"],
                 "description": "Агрегат наблюдений, не биржевых сделок. open/close по receivedAt, затем id; average - среднее арифметическое."
             },
             "PriceAggregatesResponse": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "cryptocurrencyId": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "quoteCurrency": {
-                        "$ref": "#/components/schemas/QuoteCurrency"
-                    },
-                    "from": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "to": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "intervalSeconds": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 60,
-                        "maximum": 86400,
-                        "enum": [
-                            60,
-                            300,
-                            900,
-                            3600,
-                            86400
-                        ]
-                    },
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/PriceAggregate"
-                        },
-                        "maxItems": 2000
-                    }
+                    "cryptocurrencyId": {"$ref": "#/components/schemas/CryptocurrencyId"},
+                    "quoteCurrency": {"$ref": "#/components/schemas/QuoteCurrency"},
+                    "from": {"type": "string", "format": "date-time"},
+                    "to": {"type": "string", "format": "date-time"},
+                    "intervalSeconds": {"type": "integer", "format": "int64", "minimum": 60, "maximum": 86400, "enum": [60, 300, 900, 3600, 86400]},
+                    "data": {"type": "array", "items": {"$ref": "#/components/schemas/PriceAggregate"}, "maxItems": 2000}
                 },
-                "required": [
-                    "cryptocurrencyId",
-                    "quoteCurrency",
-                    "from",
-                    "to",
-                    "intervalSeconds",
-                    "data"
-                ]
+                "required": ["cryptocurrencyId", "quoteCurrency", "from", "to", "intervalSeconds", "data"]
             },
             "Settings": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "quoteCurrency": {
-                        "$ref": "#/components/schemas/QuoteCurrency"
-                    },
-                    "defaultRetentionPolicy": {
-                        "$ref": "#/components/schemas/DefaultRetentionPolicy"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "quoteCurrency": {"$ref": "#/components/schemas/QuoteCurrency"},
+                    "defaultRetentionPolicy": {"$ref": "#/components/schemas/DefaultRetentionPolicy"},
+                    "updatedAt": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "quoteCurrency",
-                    "defaultRetentionPolicy",
-                    "updatedAt"
-                ],
+                "required": ["quoteCurrency", "defaultRetentionPolicy", "updatedAt"],
                 "description": "USD. Начальная политика хранения задаётся DEFAULT_RETENTION_DAYS (по умолчанию 30); затем действует значение из БД. Очистка запускается при старте и с периодом CLEANUP_INTERVAL_SECONDS, включая приостановленные валюты. Последняя котировка сохраняется."
             },
             "SettingsUpdate": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "defaultRetentionPolicy": {
-                        "$ref": "#/components/schemas/DefaultRetentionPolicy"
-                    }
-                },
-                "required": [
-                    "defaultRetentionPolicy"
-                ],
+                "properties": {"defaultRetentionPolicy": {"$ref": "#/components/schemas/DefaultRetentionPolicy"}},
+                "required": ["defaultRetentionPolicy"],
                 "minProperties": 1
             },
             "SynchronizationCreate": {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": {
-                    "selection": {
-                        "$ref": "#/components/schemas/CryptocurrencySelection"
-                    }
-                },
-                "required": [
-                    "selection"
-                ]
+                "properties": {"selection": {"$ref": "#/components/schemas/CryptocurrencySelection"}},
+                "required": ["selection"]
             },
             "SynchronizationItem": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "cryptocurrencyId": {
-                        "$ref": "#/components/schemas/CryptocurrencyId"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "queued",
-                            "running",
-                            "succeeded",
-                            "failed"
-                        ]
-                    },
-                    "error": {
-                        "$ref": "#/components/schemas/SyncFailure"
-                    }
+                    "cryptocurrencyId": {"$ref": "#/components/schemas/CryptocurrencyId"},
+                    "status": {"type": "string", "enum": ["queued", "running", "succeeded", "failed"]},
+                    "error": {"$ref": "#/components/schemas/SyncFailure"}
                 },
-                "required": [
-                    "cryptocurrencyId",
-                    "status"
-                ],
+                "required": ["cryptocurrencyId", "status"],
                 "description": "error присутствует только при failed."
             },
             "Synchronization": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "queued",
-                            "running",
-                            "succeeded",
-                            "partially_succeeded",
-                            "failed"
-                        ]
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "startedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "completedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "totalCount": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 1,
-                        "maximum": 9007199254740991
-                    },
-                    "succeededCount": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                    },
-                    "failedCount": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                    },
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/SynchronizationItem"
-                        },
-                        "minItems": 1
-                    }
+                    "id": {"type": "string", "format": "uuid"},
+                    "status": {"type": "string", "enum": ["queued", "running", "succeeded", "partially_succeeded", "failed"]},
+                    "createdAt": {"type": "string", "format": "date-time"},
+                    "startedAt": {"type": "string", "format": "date-time", "nullable": true},
+                    "completedAt": {"type": "string", "format": "date-time", "nullable": true},
+                    "totalCount": {"type": "integer", "format": "int64", "minimum": 1, "maximum": 9007199254740991},
+                    "succeededCount": {"type": "integer", "format": "int64", "minimum": 0, "maximum": 9007199254740991},
+                    "failedCount": {"type": "integer", "format": "int64", "minimum": 0, "maximum": 9007199254740991},
+                    "items": {"type": "array", "items": {"$ref": "#/components/schemas/SynchronizationItem"}, "minItems": 1}
                 },
-                "required": [
-                    "id",
-                    "status",
-                    "createdAt",
-                    "startedAt",
-                    "completedAt",
-                    "totalCount",
-                    "succeededCount",
-                    "failedCount",
-                    "items"
-                ],
+                "required": ["id", "status", "createdAt", "startedAt", "completedAt", "totalCount", "succeededCount", "failedCount", "items"],
                 "description": "Результаты хранятся в БД. Счётчики соответствуют items. После рестарта незавершённые running/items получают OPERATION_INTERRUPTED; успешные items сохраняются, итоговый статус вычисляется по результатам. queued остаются в очереди."
             },
             "PriceHistoryDeletionCreate": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "selection": {
-                        "$ref": "#/components/schemas/CryptocurrencySelection"
-                    },
-                    "from": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "to": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "selection": {"$ref": "#/components/schemas/CryptocurrencySelection"},
+                    "from": {"type": "string", "format": "date-time"},
+                    "to": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "selection",
-                    "from",
-                    "to"
-                ]
+                "required": ["selection", "from", "to"]
             },
             "DeletionFailure": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "code": {
-                        "type": "string",
-                        "enum": [
-                            "OPERATION_INTERRUPTED",
-                            "INTERNAL_ERROR"
-                        ]
-                    },
-                    "message": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 500
-                    },
-                    "occurredAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "code": {"type": "string", "enum": ["OPERATION_INTERRUPTED", "INTERNAL_ERROR"]},
+                    "message": {"type": "string", "minLength": 1, "maxLength": 500},
+                    "occurredAt": {"type": "string", "format": "date-time"}
                 },
-                "required": [
-                    "code",
-                    "message",
-                    "occurredAt"
-                ]
+                "required": ["code", "message", "occurredAt"]
             },
             "PriceHistoryDeletion": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "queued",
-                            "running",
-                            "succeeded",
-                            "failed"
-                        ]
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "startedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "completedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "cryptocurrencyIds": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/CryptocurrencyId"
-                        },
-                        "minItems": 1,
-                        "uniqueItems": true
-                    },
-                    "from": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "to": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "snapshotAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "deletedRows": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                    },
-                    "error": {
-                        "$ref": "#/components/schemas/DeletionFailure"
-                    }
+                    "id": {"type": "string", "format": "uuid"},
+                    "status": {"type": "string", "enum": ["queued", "running", "succeeded", "failed"]},
+                    "createdAt": {"type": "string", "format": "date-time"},
+                    "startedAt": {"type": "string", "format": "date-time", "nullable": true},
+                    "completedAt": {"type": "string", "format": "date-time", "nullable": true},
+                    "cryptocurrencyIds": {"type": "array", "items": {"$ref": "#/components/schemas/CryptocurrencyId"}, "minItems": 1, "uniqueItems": true},
+                    "from": {"type": "string", "format": "date-time"},
+                    "to": {"type": "string", "format": "date-time"},
+                    "snapshotAt": {"type": "string", "format": "date-time"},
+                    "deletedRows": {"type": "integer", "format": "int64", "minimum": 0, "maximum": 9007199254740991},
+                    "error": {"$ref": "#/components/schemas/DeletionFailure"}
                 },
-                "required": [
-                    "id",
-                    "status",
-                    "createdAt",
-                    "startedAt",
-                    "completedAt",
-                    "cryptocurrencyIds",
-                    "from",
-                    "to",
-                    "snapshotAt",
-                    "deletedRows"
-                ],
+                "required": ["id", "status", "createdAt", "startedAt", "completedAt", "cryptocurrencyIds", "from", "to", "snapshotAt", "deletedRows"],
                 "description": "Очистка порциями: при failed завершённые удаления не откатываются. error присутствует только при failed. Последние котировки и настройки сохраняются."
             },
             "InvalidParameter": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "in": {
-                        "type": "string",
-                        "enum": [
-                            "path",
-                            "query",
-                            "header",
-                            "cookie",
-                            "body"
-                        ]
-                    },
-                    "reason": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 500
-                    }
+                    "name": {"type": "string", "minLength": 1},
+                    "in": {"type": "string", "enum": ["path", "query", "header", "cookie", "body"]},
+                    "reason": {"type": "string", "minLength": 1, "maxLength": 500}
                 },
-                "required": [
-                    "name",
-                    "in",
-                    "reason"
-                ]
+                "required": ["name", "in", "reason"]
             },
             "Problem": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "type": {
-                        "type": "string",
-                        "format": "uri"
-                    },
-                    "title": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "status": {
-                        "type": "integer",
-                        "format": "int64",
-                        "minimum": 400,
-                        "maximum": 599
-                    },
-                    "detail": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "instance": {
-                        "type": "string"
-                    },
-                    "code": {
-                        "type": "string",
-                        "pattern": "^[A-Z][A-Z0-9_]+$"
-                    },
-                    "requestId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "invalidParams": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/InvalidParameter"
-                        }
-                    }
+                    "type": {"type": "string", "format": "uri"},
+                    "title": {"type": "string", "minLength": 1},
+                    "status": {"type": "integer", "format": "int64", "minimum": 400, "maximum": 599},
+                    "detail": {"type": "string", "minLength": 1},
+                    "instance": {"type": "string"},
+                    "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$"},
+                    "requestId": {"type": "string", "format": "uuid"},
+                    "invalidParams": {"type": "array", "items": {"$ref": "#/components/schemas/InvalidParameter"}}
                 },
-                "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                ],
+                "required": ["type", "title", "status", "detail", "instance", "code", "requestId"],
                 "description": "application/problem+json. Без секретов и внутренних трассировок; invalidParams используется для ошибок валидации."
             }
         }

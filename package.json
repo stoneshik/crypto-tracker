@@ -1,0 +1,33 @@
+{
+    "name": "crypto-tracker",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Cryptocurrency tracking, price history and administration API",
+    "engines": {
+        "node": ">=24.15.0 <25"
+    },
+    "scripts": {
+        "setup": "node scripts/setup-env.cjs",
+        "build": "npm run clean --silent && tsc",
+        "start": "node --env-file-if-exists=.env dist/server.js",
+        "watch": "tsc --watch",
+        "dev": "node --env-file-if-exists=.env --watch dist/server.js",
+        "test": "npm run build && jest --runInBand",
+        "test:coverage": "npm run build && jest --runInBand --coverage",
+        "clean": "node scripts/clean.cjs"
+    },
+    "dependencies": {
+        "axios": "^1.20.0",
+        "express": "^5.3.0",
+        "swagger-ui-dist": "^5.33.1"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.6",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^26.6.5",
+        "@types/supertest": "^7.2.1",
+        "jest": "^30.5.2",
+        "supertest": "^7.3.1",
+        "typescript": "^7.0.2"
+    }
+}
