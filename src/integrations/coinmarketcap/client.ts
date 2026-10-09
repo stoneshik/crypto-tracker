@@ -1,12 +1,12 @@
 import axios,{ AxiosInstance } from 'axios';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Config } from '../../config/types';
+import { parseCatalog } from './catalog';
 import { toUpstreamError } from './errors';
 import { parseQuotes } from './quotes';
-import type { QuoteBatch } from './types';
+import type { CatalogCurrency,CatalogProvider,QuoteBatch,QuoteProvider } from './types';
 
-export class CoinMarketCapClient {
-
+export class CoinMarketCapClient implements QuoteProvider, CatalogProvider {
     private readonly http: AxiosInstance;
 
     constructor(
@@ -31,6 +31,15 @@ export class CoinMarketCapClient {
             signal,
         );
         return parseQuotes(raw, ids, this.clock());
+    }
+
+    async findBySymbol(symbol: string, signal: AbortSignal): Promise<CatalogCurrency[]> {
+        const raw = await this.request(
+            '/v1/cryptocurrency/map',
+            { symbol, aux: 'is_active' },
+            signal,
+        );
+        return parseCatalog(raw, symbol);
     }
 
     private async request(
