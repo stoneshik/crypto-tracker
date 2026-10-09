@@ -1,0 +1,27 @@
+services:
+    api:
+        build: .
+        init: true
+        env_file: .env
+        environment:
+            HOST: 0.0.0.0
+            DB_PATH: /app/data/crypto.db
+        ports:
+            - '127.0.0.1:${PORT:-3000}:${PORT:-3000}'
+        volumes:
+            - crypto-data:/app/data
+        stop_grace_period: 65s
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'node',
+                    '-e',
+                    "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+                ]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+volumes:
+    crypto-data:
