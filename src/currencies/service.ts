@@ -1,16 +1,25 @@
-import { invalid } from '../errors';
+import type { Config } from '../config/types';
+import { ApiError,invalid } from '../errors';
+import { toApiUpstreamError } from '../integrations/coinmarketcap/errors';
+import type { CatalogProvider,QuoteProvider } from '../integrations/coinmarketcap/types';
 import { CursorCodec } from '../prices/cursor';
 import { SettingsRepository } from '../settings/repository';
-import { object,positiveInteger } from '../validation';
+import { parseRetention } from '../settings/validation';
+import { object,positiveInteger,scalar } from '../validation';
 import { toCurrency } from './mappers';
 import { CurrencyRepository } from './repository';
+import { parseCurrencyCreate,parseCurrencyUpdate,parseSelection } from './validation';
 
 export class CurrencyService {
-
     constructor(
         private readonly repository: CurrencyRepository,
         private readonly settings: SettingsRepository,
         private readonly cursors: CursorCodec,
+        private readonly provider: QuoteProvider,
+        private readonly catalogProvider: CatalogProvider,
+        private readonly config: Config,
+        private readonly signal: AbortSignal,
+        private readonly clock: () => number = Date.now,
     ) {}
 
     get(id: number) {
@@ -50,5 +59,70 @@ export class CurrencyService {
                     : null,
             },
         };
+    }
+
+    async catalog(input: unknown) {
+        const query = object(input, ['symbol'], 'query');
+        const symbol = scalar(query.symbol, 'symbol').toUpperCase();
+        if (!/^[A-Z0-9$@._-]{1,32}$/.test(symbol)) {
+            throw invalid('symbol', 'query', 'Некорректный символ', 400);
+        }
+        this.requireProvider();
+        try {
+            return { data: await this.catalogProvider.findBySymbol(symbol, this.signal) };
+        } catch (error) {
+            throw toApiUpstreamError(error);
+        }
+    }
+
+    async create(value: unknown) {
+        const input = parseCurrencyCreate(value, this.config.pollIntervalSeconds);
+        if (this.repository.findByCmcId(input.cmcId)) {
+            throw new ApiError(409, 'CRYPTOCURRENCY_EXISTS', 'Валюта уже отслеживается');
+        }
+        this.requireProvider();
+        let result;
+        try {
+            result = await this.provider.fetchQuotes([input.cmcId], this.signal);
+        } catch (error) {
+            throw toApiUpstreamError(error);
+        }
+        const quote = result.quotes.find((item) => item.cmcId === input.cmcId);
+        if (!quote) {
+            const error = result.errors.get(input.cmcId);
+            if (!error || error.code === 'QUOTE_MISSING') {
+                throw invalid('cmcId', 'body', 'Актив не поддерживается CoinMarketCap');
+            }
+            throw toApiUpstreamError(error);
+        }
+        const row = this.repository.create(input, quote, this.clock());
+        return toCurrency(row, this.settings.get().retention_days);
+    }
+
+    update(id: number, input: unknown) {
+        const row = this.repository.update(id, parseCurrencyUpdate(input), this.clock());
+        return toCurrency(row, this.settings.get().retention_days);
+    }
+
+    updateRetention(input: unknown) {
+        const body = object(input, ['selection', 'changes']);
+        const changes = object(body.changes, ['retentionPolicy']);
+        const now = this.clock();
+        const updatedCount = this.repository.updateRetention(
+            parseSelection(body.selection),
+            parseRetention(changes.retentionPolicy),
+            now,
+        );
+        return { updatedCount, updatedAt: new Date(now).toISOString() };
+    }
+
+    delete(id: number): void {
+        this.repository.delete(id);
+    }
+
+    private requireProvider(): void {
+        if (!this.config.cmcApiKey) {
+            throw new ApiError(503, 'PROVIDER_NOT_CONFIGURED', 'Укажите CMC_API_KEY на сервере');
+        }
     }
 }

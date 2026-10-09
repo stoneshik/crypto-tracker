@@ -2,10 +2,10 @@ import type { DatabaseSync,SQLInputValue } from 'node:sqlite';
 import type { Config } from '../config/types';
 import { transaction } from '../database';
 import { ApiError,UpstreamError } from '../errors';
-import type { CurrencyCreate,CurrencyRow } from './types';
+import type { RetentionPolicy } from '../settings/types';
+import type { CurrencyCreate,CurrencyRow,CurrencySelection,CurrencyUpdate } from './types';
 
 export class CurrencyRepository {
-
     constructor(private readonly db: DatabaseSync) {}
 
     initialize(config: Config, now: number): void {
@@ -78,6 +78,17 @@ export class CurrencyRepository {
             .all(...args, limit) as unknown as CurrencyRow[];
     }
 
+    select(selection: CurrencySelection): number[] {
+        if (selection.scope === 'selected') {
+            selection.cryptocurrencyIds.forEach((id) => this.get(id));
+            return selection.cryptocurrencyIds;
+        }
+        return this.db
+            .prepare('SELECT id FROM cryptocurrencies ORDER BY id')
+            .all()
+            .map((row) => Number(row.id));
+    }
+
     create(
         input: CurrencyCreate,
         metadata: { symbol: string; name: string },
@@ -114,6 +125,75 @@ export class CurrencyRepository {
                 now,
                 input.trackingEnabled ? now : null,
             ) as unknown as CurrencyRow;
+    }
+
+    update(id: number, changes: CurrencyUpdate, now: number): CurrencyRow {
+        const row = this.get(id);
+        const enabled = changes.trackingEnabled ?? Boolean(row.tracking_enabled);
+        const interval = changes.pollingIntervalSeconds ?? row.polling_interval_seconds;
+        const mode = changes.retentionPolicy?.mode ?? row.retention_mode;
+        let days = row.retention_days;
+        if (changes.retentionPolicy) {
+            days = changes.retentionPolicy.mode === 'days' ? changes.retentionPolicy.days : null;
+        }
+        let next = row.next_sync_at;
+        if (!enabled) {
+            next = null;
+        } else if (!row.tracking_enabled) {
+            next = now;
+        } else if (interval !== row.polling_interval_seconds) {
+            next =
+                row.last_successful_sync_at === null
+                    ? now
+                    : Math.max(now, row.last_successful_sync_at + interval * 1000);
+            if (row.last_error_code) {
+                next = Math.max(next, row.next_sync_at ?? now);
+            }
+        }
+        return this.db
+            .prepare(
+                `
+                    UPDATE cryptocurrencies SET tracking_enabled = ?, polling_interval_seconds = ?,
+                        retention_mode = ?, retention_days = ?, next_sync_at = ?, updated_at = ?
+                    WHERE id = ?
+                    RETURNING *
+                `,
+            )
+            .get(Number(enabled), interval, mode, days, next, now, id) as unknown as CurrencyRow;
+    }
+
+    updateRetention(selection: CurrencySelection, policy: RetentionPolicy, now: number): number {
+        return transaction(this.db, () => {
+            const ids = this.select(selection);
+            if (!ids.length) {
+                return 0;
+            }
+            const result = this.db
+                .prepare(
+                    `
+                        UPDATE cryptocurrencies SET retention_mode = ?, retention_days = ?, updated_at = ?
+                        WHERE id IN (${ids.map(() => '?').join(',')})
+                    `,
+                )
+                .run(policy.mode, policy.mode === 'days' ? policy.days : null, now, ...ids);
+            return Number(result.changes);
+        });
+    }
+
+    delete(id: number): void {
+        this.get(id);
+        const active = this.db
+            .prepare(
+                `
+                    SELECT 1 FROM operation_items i JOIN operations o ON o.id = i.operation_id
+                    WHERE i.cryptocurrency_id = ? AND o.kind = 'synchronization' AND o.status IN ('queued', 'running')
+                `,
+            )
+            .get(id);
+        if (active) {
+            throw new ApiError(409, 'OPERATION_CONFLICT', 'Для валюты выполняется синхронизация');
+        }
+        this.db.prepare('DELETE FROM cryptocurrencies WHERE id = ?').run(id);
     }
 
     due(now: number): CurrencyRow[] {

@@ -14,6 +14,7 @@ import { CursorCodec } from './prices/cursor';
 import { PriceRepository } from './prices/repository';
 import { PriceService } from './prices/service';
 import { SettingsRepository } from './settings/repository';
+import { SettingsService } from './settings/service';
 import type { RuntimeOptions } from './types';
 
 export function createRuntime(config: Config, options: RuntimeOptions = {}) {
@@ -32,10 +33,21 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         const cursors = new CursorCodec(config.jwtSecret);
         const client = new CoinMarketCapClient(config, undefined, clock);
         const provider = options.provider ?? client;
+        const catalogProvider = options.catalogProvider ?? client;
         const requests = new AbortController();
         const auth = new AuthService(authRepository, tokens, config, clock);
-        const currencies = new CurrencyService(currencyRepository, settingsRepository, cursors);
+        const currencies = new CurrencyService(
+            currencyRepository,
+            settingsRepository,
+            cursors,
+            provider,
+            catalogProvider,
+            config,
+            requests.signal,
+            clock,
+        );
         const prices = new PriceService(priceRepository, currencyRepository, cursors, clock);
+        const settings = new SettingsService(settingsRepository, clock);
         const synchronization = new SynchronizationService(
             db,
             currencyRepository,
@@ -59,6 +71,7 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
             auth,
             prices,
             currencies,
+            settings,
             logger,
         });
 
@@ -69,6 +82,7 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
             auth,
             prices,
             currencies,
+            settings,
             authRepository,
             currencyRepository,
             priceRepository,

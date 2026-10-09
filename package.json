@@ -14,7 +14,8 @@
         "dev": "node --env-file-if-exists=.env --watch dist/server.js",
         "test": "npm run build && jest --runInBand",
         "test:coverage": "npm run build && jest --runInBand --coverage",
-        "clean": "node scripts/clean.cjs"
+        "clean": "node scripts/clean.cjs",
+        "admin:create": "node --env-file-if-exists=.env dist/commands/create-admin.js"
     },
     "dependencies": {
         "axios": "^1.20.0",

@@ -4,6 +4,7 @@ import type { Config } from './config/types';
 import type { CurrencyService } from './currencies/service';
 import type { CatalogProvider,QuoteProvider } from './integrations/coinmarketcap/types';
 import type { PriceService } from './prices/service';
+import type { SettingsService } from './settings/service';
 
 export interface AppDependencies {
     config: Config;
@@ -12,6 +13,7 @@ export interface AppDependencies {
     auth: AuthService;
     prices: PriceService;
     currencies: CurrencyService;
+    settings: SettingsService;
 }
 
 export interface Logger {
