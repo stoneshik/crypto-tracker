@@ -10,6 +10,8 @@ import { CoinMarketCapClient } from './integrations/coinmarketcap/client';
 import { SyncWorker } from './jobs/sync.worker';
 import { SynchronizationService } from './jobs/synchronization.service';
 import { createLogger } from './logger';
+import { OperationRepository } from './operations/repository';
+import { OperationService } from './operations/service';
 import { CursorCodec } from './prices/cursor';
 import { PriceRepository } from './prices/repository';
 import { PriceService } from './prices/service';
@@ -26,8 +28,10 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         const currencyRepository = new CurrencyRepository(db);
         const priceRepository = new PriceRepository(db);
         const settingsRepository = new SettingsRepository(db);
+        const operationRepository = new OperationRepository(db, currencyRepository);
         settingsRepository.initialize(config.defaultRetentionDays, clock());
         currencyRepository.initialize(config, clock());
+        operationRepository.recover(clock());
 
         const tokens = new JwtTokens(config);
         const cursors = new CursorCodec(config.jwtSecret);
@@ -48,10 +52,16 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         );
         const prices = new PriceService(priceRepository, currencyRepository, cursors, clock);
         const settings = new SettingsService(settingsRepository, clock);
+        const operations = new OperationService(
+            operationRepository,
+            Boolean(config.cmcApiKey),
+            clock,
+        );
         const synchronization = new SynchronizationService(
             db,
             currencyRepository,
             priceRepository,
+            operationRepository,
             provider,
             config,
             clock,
@@ -59,6 +69,7 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
         const worker = new SyncWorker(
             currencyRepository,
             authRepository,
+            operationRepository,
             priceRepository,
             synchronization,
             config,
@@ -72,6 +83,7 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
             prices,
             currencies,
             settings,
+            operations,
             logger,
         });
 
@@ -83,10 +95,12 @@ export function createRuntime(config: Config, options: RuntimeOptions = {}) {
             prices,
             currencies,
             settings,
+            operations,
             authRepository,
             currencyRepository,
             priceRepository,
             settingsRepository,
+            operationRepository,
             tokens,
             logger,
 

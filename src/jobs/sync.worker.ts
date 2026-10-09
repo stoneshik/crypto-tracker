@@ -2,12 +2,13 @@ import { setImmediate as yieldToRequests } from 'node:timers/promises';
 import { AuthRepository } from '../auth/repository';
 import type { Config } from '../config/types';
 import { CurrencyRepository } from '../currencies/repository';
+import { OperationRepository } from '../operations/repository';
+import type { OperationRow } from '../operations/types';
 import { PriceRepository } from '../prices/repository';
 import type { Logger } from '../types';
 import { SynchronizationService } from './synchronization.service';
 
 export class SyncWorker {
-
     private timer: NodeJS.Timeout | undefined;
     private running: Promise<void> | undefined;
     private readonly controller = new AbortController();
@@ -18,6 +19,7 @@ export class SyncWorker {
     constructor(
         private readonly currencies: CurrencyRepository,
         private readonly auth: AuthRepository,
+        private readonly operations: OperationRepository,
         private readonly prices: PriceRepository,
         private readonly synchronization: SynchronizationService,
         private readonly config: Config,
@@ -73,6 +75,10 @@ export class SyncWorker {
         if (this.stopping) {
             return;
         }
+        const job = this.operations.next();
+        if (job) {
+            await this.execute(job);
+        }
         if (!this.stopping && this.config.syncEnabled) {
             try {
                 await this.synchronization.synchronize(
@@ -84,6 +90,43 @@ export class SyncWorker {
                     throw error;
                 }
             }
+        }
+    }
+
+    private async execute(job: OperationRow): Promise<void> {
+        this.operations.start(job.id, this.clock());
+        try {
+            if (job.kind === 'synchronization') {
+                const rows = this.operations
+                    .items(job.id)
+                    .map((item) => this.currencies.get(item.cryptocurrency_id));
+                await this.synchronization.synchronize(rows, this.controller.signal, job.id);
+                this.controller.signal.throwIfAborted();
+                this.operations.finishSynchronization(job.id, this.clock());
+            } else {
+                while (true) {
+                    this.controller.signal.throwIfAborted();
+                    if (
+                        this.operations.deleteBatch(job, this.config.cleanupBatchSize) <
+                        this.config.cleanupBatchSize
+                    ) {
+                        break;
+                    }
+                    await yieldToRequests();
+                }
+                this.operations.finishDeletion(job.id, this.clock());
+            }
+        } catch {
+            this.operations.fail(
+                job,
+                this.stopping
+                    ? {
+                          code: 'OPERATION_INTERRUPTED',
+                          message: 'Выполнение прервано остановкой сервера',
+                      }
+                    : { code: 'INTERNAL_ERROR', message: 'Не удалось выполнить задание' },
+                this.clock(),
+            );
         }
     }
 

@@ -5,6 +5,7 @@ import type { CurrencyRow } from '../currencies/types';
 import { transaction } from '../database';
 import { UpstreamError } from '../errors';
 import type { QuoteProvider } from '../integrations/coinmarketcap/types';
+import { OperationRepository } from '../operations/repository';
 import { PriceRepository } from '../prices/repository';
 
 export class SynchronizationService {
@@ -12,6 +13,7 @@ export class SynchronizationService {
         private readonly db: DatabaseSync,
         private readonly currencies: CurrencyRepository,
         private readonly prices: PriceRepository,
+        private readonly operations: OperationRepository,
         private readonly provider: QuoteProvider,
         private readonly config: Config,
         private readonly clock: () => number = Date.now,
@@ -20,6 +22,7 @@ export class SynchronizationService {
     async synchronize(
         rows: CurrencyRow[],
         signal: AbortSignal,
+        operationId?: string,
     ): Promise<void> {
         if (!rows.length) {
             return;
@@ -38,9 +41,13 @@ export class SynchronizationService {
                 const error =
                     result.errors.get(row.cmc_id) ??
                     new UpstreamError('QUOTE_MISSING', 'Котировка отсутствует');
+                // Итог задания и котировка фиксируются вместе, чтобы перезапуск не разделил их.
                 transaction(this.db, () => {
                     if (quote) {
                         this.prices.saveQuote(row.id, quote, now);
+                        if (operationId) {
+                            this.operations.completeItem(operationId, row.id, now);
+                        }
                     } else {
                         this.currencies.fail(
                             row.id,
@@ -48,6 +55,9 @@ export class SynchronizationService {
                             now,
                             this.config.syncErrorBackoffSeconds,
                         );
+                        if (operationId) {
+                            this.operations.completeItem(operationId, row.id, now, error);
+                        }
                     }
                 });
             }
@@ -67,6 +77,9 @@ export class SynchronizationService {
                         this.clock(),
                         this.config.syncErrorBackoffSeconds,
                     );
+                    if (operationId) {
+                        this.operations.completeItem(operationId, row.id, this.clock(), failure);
+                    }
                 });
             }
         } finally {
