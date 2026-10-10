@@ -1,5 +1,5 @@
-import type { Config } from './config/types';
 import type { Logger } from './types';
+import type { Config } from './config/types';
 
 export function createLogger(level: Config['logLevel']): Logger {
     return {

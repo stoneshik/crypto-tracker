@@ -1,7 +1,7 @@
-import type { RequestHandler } from 'express';
 import { ApiError } from '../errors';
-import type { AuthService } from './service';
 import type { Principal } from './types';
+import type { RequestHandler } from 'express';
+import type { AuthService } from './service';
 
 export function requireAuthentication(auth: AuthService, allowServiceKey = true): RequestHandler {
     return (req, res, next) => {

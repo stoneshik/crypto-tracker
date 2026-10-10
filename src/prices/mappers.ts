@@ -1,4 +1,4 @@
-import type { HistoryRow,LatestRow } from './types';
+import type { HistoryRow, LatestRow } from './types';
 
 export const iso = (value: number | null) =>
     value === null ? null : new Date(value).toISOString();

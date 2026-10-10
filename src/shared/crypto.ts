@@ -1,4 +1,4 @@
-import { createHash,randomBytes,timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const base64url = /^[A-Za-z0-9_-]+$/;
 

@@ -1,5 +1,5 @@
-import type { UpstreamError } from '../../errors';
 import type { Quote } from '../../prices/types';
+import type { UpstreamError } from '../../errors';
 
 export interface QuoteBatch {
     quotes: Quote[];

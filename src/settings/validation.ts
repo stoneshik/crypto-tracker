@@ -1,6 +1,6 @@
-import { invalid } from '../errors';
 import { object } from '../validation';
-import type { DefaultRetentionPolicy,RetentionPolicy } from './types';
+import { invalid } from '../errors';
+import type { RetentionPolicy, DefaultRetentionPolicy } from './types';
 
 export function parseRetention(value: unknown, allowInherit: false): DefaultRetentionPolicy;
 export function parseRetention(value: unknown, allowInherit?: true): RetentionPolicy;

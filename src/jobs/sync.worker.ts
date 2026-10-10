@@ -1,11 +1,11 @@
 import { setImmediate as yieldToRequests } from 'node:timers/promises';
-import { AuthRepository } from '../auth/repository';
 import type { Config } from '../config/types';
+import type { Logger } from '../types';
+import type { OperationRow } from '../operations/types';
+import { AuthRepository } from '../auth/repository';
 import { CurrencyRepository } from '../currencies/repository';
 import { OperationRepository } from '../operations/repository';
-import type { OperationRow } from '../operations/types';
 import { PriceRepository } from '../prices/repository';
-import type { Logger } from '../types';
 import { SynchronizationService } from './synchronization.service';
 
 export class SyncWorker {

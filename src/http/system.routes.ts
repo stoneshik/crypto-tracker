@@ -1,8 +1,8 @@
-import { Router,static as serveStatic } from 'express';
-import { dirname,resolve } from 'node:path';
+import { Router, static as serveStatic } from 'express';
+import { dirname, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { ApiError } from '../errors';
-import { requireEmptyBody,requireEmptyQuery } from './request-validation';
+import { requireEmptyBody, requireEmptyQuery } from './request-validation';
 
 export function createSystemRouter(db: DatabaseSync): Router {
     const router = Router();

@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { DefaultRetentionPolicy,SettingsRow } from './types';
+import type { SettingsRow, DefaultRetentionPolicy } from './types';
 
 export class SettingsRepository {
     constructor(private readonly db: DatabaseSync) {}

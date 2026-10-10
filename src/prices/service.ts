@@ -1,8 +1,8 @@
 import { CurrencyRepository } from '../currencies/repository';
 import { invalid } from '../errors';
-import { ids,object,period,positiveInteger } from '../validation';
 import { CursorCodec } from './cursor';
-import { iso,toLatestQuote,toObservation } from './mappers';
+import { iso, toObservation, toLatestQuote } from './mappers';
+import { ids, object, period, positiveInteger } from '../validation';
 import { PriceRepository } from './repository';
 
 export class PriceService {

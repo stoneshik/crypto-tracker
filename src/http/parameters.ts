@@ -1,6 +1,6 @@
 import type { Request } from 'express';
-import { invalid } from '../errors';
 import { positiveInteger } from '../validation';
+import { invalid } from '../errors';
 
 export function currencyId(req: Request): number {
     return positiveInteger(req.params.cryptocurrencyId, 'cryptocurrencyId', 'path');

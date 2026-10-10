@@ -1,4 +1,4 @@
-import type { OperationItemRow,OperationRow } from './types';
+import type { OperationRow, OperationItemRow } from './types';
 
 const iso = (value: number | null) => (value === null ? null : new Date(value).toISOString());
 

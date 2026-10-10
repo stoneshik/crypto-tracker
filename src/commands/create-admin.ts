@@ -1,7 +1,7 @@
-import { createAdmin } from '../auth/admin';
-import { AuthRepository } from '../auth/repository';
 import { loadConfig } from '../config/load-config';
 import { openDatabase } from '../database';
+import { AuthRepository } from '../auth/repository';
+import { createAdmin } from '../auth/admin';
 
 async function main(): Promise<void> {
     const config = loadConfig({ ...process.env, SYNC_ENABLED: 'false' });

@@ -1,7 +1,7 @@
 import { invalid } from '../errors';
-import { parseRetention } from '../settings/validation';
 import { object } from '../validation';
-import type { CurrencyCreate,CurrencySelection,CurrencyUpdate } from './types';
+import { parseRetention } from '../settings/validation';
+import type { CurrencyCreate, CurrencyUpdate, CurrencySelection } from './types';
 
 function bodyInteger(value: unknown, name: string, min = 1, max = Number.MAX_SAFE_INTEGER): number {
     if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) {

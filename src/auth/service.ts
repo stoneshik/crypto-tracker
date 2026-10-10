@@ -1,10 +1,10 @@
 import type { Config } from '../config/types';
-import { ApiError,unauthorized } from '../errors';
-import { equalSecrets,refreshToken,tokenHash } from '../shared/crypto';
+import { ApiError, unauthorized } from '../errors';
+import { equalSecrets, refreshToken, tokenHash } from '../shared/crypto';
+import { hashPassword, verifyPassword } from './password';
 import { JwtTokens } from './jwt';
-import { hashPassword,verifyPassword } from './password';
 import { AuthRepository } from './repository';
-import type { Principal,SessionRow,User,UserPrincipal,UserRow } from './types';
+import type { SessionRow, UserRow, User, UserPrincipal, Principal } from './types';
 
 const publicUser = (row: UserRow): User => ({
     id: row.id,

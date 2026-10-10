@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { Config } from '../../config/types';
-import { ApiError,UpstreamError } from '../../errors';
+import { ApiError, UpstreamError } from '../../errors';
 
 export function toUpstreamError(error: unknown, config: Config, now: number): UpstreamError {
     if (error instanceof UpstreamError) {

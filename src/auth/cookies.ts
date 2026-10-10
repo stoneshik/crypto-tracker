@@ -1,4 +1,4 @@
-import type { Request,Response } from 'express';
+import type { Request, Response } from 'express';
 import type { Config } from '../config/types';
 import { invalid } from '../errors';
 
