@@ -1,8 +1,8 @@
-import type { ErrorRequestHandler,RequestHandler } from 'express';
-import { clearRefreshCookie } from '../auth/cookies';
+import type { ErrorRequestHandler, RequestHandler } from 'express';
 import type { Config } from '../config/types';
-import { ApiError } from '../errors';
 import type { Logger } from '../types';
+import { ApiError } from '../errors';
+import { clearRefreshCookie } from '../auth/cookies';
 
 function toApiError(error: unknown): ApiError {
     if (error instanceof ApiError) {

@@ -1,4 +1,4 @@
-import { randomBytes,scrypt,timingSafeEqual } from 'node:crypto';
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 
 const derive = (password: string, salt: string) =>
     new Promise<Buffer>((resolve, reject) => {

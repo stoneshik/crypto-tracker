@@ -1,8 +1,8 @@
-import { createHmac,randomUUID,timingSafeEqual } from 'node:crypto';
+import type { AccessClaims } from './types';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Config } from '../config/types';
 import { unauthorized } from '../errors';
-import { decodePart,jsonPart } from '../shared/crypto';
-import type { AccessClaims } from './types';
+import { jsonPart, decodePart } from '../shared/crypto';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const base64url = /^[A-Za-z0-9_-]+$/;

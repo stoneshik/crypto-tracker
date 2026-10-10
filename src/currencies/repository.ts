@@ -1,9 +1,9 @@
-import type { DatabaseSync,SQLInputValue } from 'node:sqlite';
+import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import type { Config } from '../config/types';
-import { transaction } from '../database';
-import { ApiError,UpstreamError } from '../errors';
+import type { CurrencyRow, CurrencyCreate, CurrencyUpdate, CurrencySelection } from './types';
 import type { RetentionPolicy } from '../settings/types';
-import type { CurrencyCreate,CurrencyRow,CurrencySelection,CurrencyUpdate } from './types';
+import { transaction } from '../database';
+import { ApiError, UpstreamError } from '../errors';
 
 export class CurrencyRepository {
     constructor(private readonly db: DatabaseSync) {}

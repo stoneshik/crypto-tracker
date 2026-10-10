@@ -1,6 +1,6 @@
 import { object } from '../validation';
-import { SettingsRepository } from './repository';
 import { parseRetention } from './validation';
+import { SettingsRepository } from './repository';
 
 export class SettingsService {
     constructor(

@@ -1,6 +1,6 @@
-import { mkdirSync,readFileSync } from 'node:fs';
-import { dirname,resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import type { Config } from './config/types';
 
 let savepointSequence = 0;

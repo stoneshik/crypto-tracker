@@ -1,5 +1,5 @@
-import type { DefaultRetentionPolicy,RetentionPolicy } from '../settings/types';
 import type { CurrencyRow } from './types';
+import type { RetentionPolicy, DefaultRetentionPolicy } from '../settings/types';
 
 function syncState(row: CurrencyRow): string {
     if (!row.tracking_enabled) {

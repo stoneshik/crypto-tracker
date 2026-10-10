@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { transaction } from '../database';
-import type { HistoryRow,LatestRow,Quote } from './types';
+import type { Quote, HistoryRow, LatestRow } from './types';
 
 export class PriceRepository {
     constructor(private readonly db: DatabaseSync) {}

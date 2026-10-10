@@ -1,10 +1,10 @@
-import axios,{ AxiosInstance } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Config } from '../../config/types';
+import type { QuoteBatch, QuoteProvider, CatalogProvider, CatalogCurrency } from './types';
+import { parseQuotes } from './quotes';
 import { parseCatalog } from './catalog';
 import { toUpstreamError } from './errors';
-import { parseQuotes } from './quotes';
-import type { CatalogCurrency,CatalogProvider,QuoteBatch,QuoteProvider } from './types';
 
 export class CoinMarketCapClient implements QuoteProvider, CatalogProvider {
     private readonly http: AxiosInstance;

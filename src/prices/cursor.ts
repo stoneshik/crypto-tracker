@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { invalid } from '../errors';
-import { decodePart,equalSecrets,jsonPart } from '../shared/crypto';
+import { jsonPart, decodePart, equalSecrets } from '../shared/crypto';
 
 interface CursorPosition {
     afterId: number;

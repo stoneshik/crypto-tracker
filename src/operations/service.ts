@@ -1,8 +1,8 @@
+import { object, dateTime } from '../validation';
+import { ApiError, invalid } from '../errors';
 import { parseSelection } from '../currencies/validation';
-import { ApiError,invalid } from '../errors';
-import { dateTime,object } from '../validation';
-import { toDeletion,toSynchronization } from './mappers';
 import { OperationRepository } from './repository';
+import { toSynchronization, toDeletion } from './mappers';
 
 export class OperationService {
     constructor(

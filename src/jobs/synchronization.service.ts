@@ -1,12 +1,12 @@
-import type { DatabaseSync } from 'node:sqlite';
-import type { Config } from '../config/types';
-import { CurrencyRepository } from '../currencies/repository';
 import type { CurrencyRow } from '../currencies/types';
-import { transaction } from '../database';
-import { UpstreamError } from '../errors';
 import type { QuoteProvider } from '../integrations/coinmarketcap/types';
-import { OperationRepository } from '../operations/repository';
+import type { Config } from '../config/types';
+import { UpstreamError } from '../errors';
+import { transaction } from '../database';
+import type { DatabaseSync } from 'node:sqlite';
+import { CurrencyRepository } from '../currencies/repository';
 import { PriceRepository } from '../prices/repository';
+import { OperationRepository } from '../operations/repository';
 
 export class SynchronizationService {
     constructor(

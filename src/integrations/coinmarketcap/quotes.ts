@@ -1,7 +1,7 @@
+import type { QuoteBatch } from './types';
 import { UpstreamError } from '../../errors';
 import type { Quote } from '../../prices/types';
 import { dateTime } from '../../validation';
-import type { QuoteBatch } from './types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
     !!value && typeof value === 'object' && !Array.isArray(value);

@@ -1,14 +1,14 @@
 import type { Config } from '../config/types';
-import { ApiError,invalid } from '../errors';
+import type { QuoteProvider, CatalogProvider } from '../integrations/coinmarketcap/types';
+import { ApiError, invalid } from '../errors';
 import { toApiUpstreamError } from '../integrations/coinmarketcap/errors';
-import type { CatalogProvider,QuoteProvider } from '../integrations/coinmarketcap/types';
-import { CursorCodec } from '../prices/cursor';
-import { SettingsRepository } from '../settings/repository';
+import { object, positiveInteger, scalar } from '../validation';
 import { parseRetention } from '../settings/validation';
-import { object,positiveInteger,scalar } from '../validation';
-import { toCurrency } from './mappers';
+import { SettingsRepository } from '../settings/repository';
+import { CursorCodec } from '../prices/cursor';
 import { CurrencyRepository } from './repository';
-import { parseCurrencyCreate,parseCurrencyUpdate,parseSelection } from './validation';
+import { toCurrency } from './mappers';
+import { parseCurrencyCreate, parseCurrencyUpdate, parseSelection } from './validation';
 
 export class CurrencyService {
     constructor(

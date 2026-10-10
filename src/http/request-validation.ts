@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { ApiError,invalid } from '../errors';
+import { ApiError, invalid } from '../errors';
 import { object } from '../validation';
 
 export const requireJson: RequestHandler = (req, _res, next) => {

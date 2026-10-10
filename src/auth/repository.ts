@@ -1,8 +1,8 @@
+import type { Role, UserRow, SessionRow, RefreshRow } from './types';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { transaction } from '../database';
 import { ApiError } from '../errors';
-import type { RefreshRow,Role,SessionRow,UserRow } from './types';
 
 export class AuthRepository {
     constructor(private readonly db: DatabaseSync) {}
